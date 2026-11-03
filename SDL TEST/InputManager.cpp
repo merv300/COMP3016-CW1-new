@@ -62,12 +62,6 @@ Vec2 InputManager::GetMoveAxis() const {
     if (IsKeyDown(SDL_SCANCODE_D) || IsKeyDown(SDL_SCANCODE_RIGHT)) {
         axis.x += 1.0f;
     }
-    if (IsKeyDown(SDL_SCANCODE_W) || IsKeyDown(SDL_SCANCODE_UP)) {
-        axis.y -= 1.0f;
-    }
-    if (IsKeyDown(SDL_SCANCODE_S) || IsKeyDown(SDL_SCANCODE_DOWN)) {
-        axis.y += 1.0f;
-    }
 
     return axis.Normalized();
 }

@@ -11,25 +11,27 @@ public:
 
     // Intent is supplied in world space (already rotation-corrected by Game),
     // which keeps the player itself unaware of view rotation.
-    void SetMoveIntent(const Vec2& worldDirection);
+    void SetMoveIntent(float worldXDir);
     void SetFiring(bool value) { firing = value; }
 
-    // Records the current view rotation so the ship is drawn facing screen-up.
-    void SetFacingQuarterTurns(int turns) { facingQuarterTurns = ((turns % 4) + 4) % 4; }
+    // Current view angle in degrees (0 = portrait, 90 = landscape). Used only
+    // for rendering the ship's nose indicator.
+    void SetViewAngle(float degrees) { viewAngle = degrees; }
 
     void Update(float deltaTime) override;
     void Render(SDL_Renderer* renderer) override;
     SDL_FRect GetBounds() const override;
 
     Vec2 GetPosition() const { return position; }
+    void SetPosition(const Vec2& pos) { position = pos; }
 
 private:
     Vec2 position;
-    Vec2 moveDirection{0.0f, 0.0f};
+    float moveIntentX = 0.0f;
     float size = 36.0f;
     float speed = 320.0f;
     bool firing = false;
-    int facingQuarterTurns = 0;
+    float viewAngle = 0.0f;
 };
 
 } // namespace rtz

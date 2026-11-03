@@ -78,6 +78,8 @@ The gameplay loop will include shooting alien enemies in order to get your score
 ### Architecture
 - Core systems (`Game`, `StateMachine`, `Renderer`, `InputManager`, `AssetManager`, `ObjectPool`) owned by `Game`
 - **Game loop:** delta-time with `SDL_GetPerformanceCounter`, clamped to 50 ms (20 FPS floor) to prevent tunnelling after stalls
+- **Player movement:** horizontal-only in world X (A/D), Y locked to bottom edge. No input remapping — rotation is purely visual.
+- **Rotation:** `currentAngle`/`targetAngle` tween pair; Q toggles between 0° and 90°
 - All game entities inherit from abstract `GameObject`:
   ```cpp
   class GameObject {
@@ -96,10 +98,11 @@ The gameplay loop will include shooting alien enemies in order to get your score
 - `ObjectPool<GameObject*>` stores base pointers; type-specific pools (`ObjectPool<Bullet>`, `ObjectPool<Enemy>`) for cache-friendly allocation
 
 ### Rotation System
-- World rendered to an off-screen `SDL_Texture` (target texture)
-- Presented via `SDL_RenderTextureRotated(renderer, texture, NULL, NULL, angle, NULL, SDL_FLIP_NONE)`
-- Angle cycles 0° → 90° → 180° → 270° → 0° on each Q press
-- Input vectors transformed by rotation matrix so "up" always maps to screen-up
+- View rotates smoothly between portrait (0°) and landscape (90° CW) via `Q` toggle
+- `currentAngle` tweens toward `targetAngle` at `kRotationSpeed` (300°/s)
+- Rotation is **purely visual**: the world does not actually rotate; player movement,
+  bullet trajectories, and collision all stay in world space
+- `SDL_RenderTextureRotated` presents the off-screen render texture at `currentAngle`
 
 ### Enemies
 - Each enemy carries `OrientationRequired` enum: `PORTRAIT` or `LANDSCAPE`

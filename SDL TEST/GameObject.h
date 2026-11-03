@@ -15,6 +15,15 @@ public:
     virtual void Render(SDL_Renderer* renderer) = 0;
     virtual SDL_FRect GetBounds() const = 0;
 
+    // Pool lifecycle: Activate() is called when object is acquired from pool,
+    // Deactivate() when returned. Default implementations just flip the flag.
+    virtual void Activate() { active = true; }
+    virtual void Deactivate() { active = false; }
+
+    // Variadic Activate for pools that pass constructor args.
+    template <typename... Args>
+    void Activate(Args&&...) { active = true; }
+
     bool IsActive() const { return active; }
     void Destroy() { active = false; }
 

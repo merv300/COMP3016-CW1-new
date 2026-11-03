@@ -23,17 +23,30 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 | Input | Action |
 |-------|--------|
 | **A / D** or **← / →** | Strafe left / right |
-| **W / S** or **↑ / ↓** | Move forward / back (relative to current rotation) |
+| **A / D** or **← / →** | Strafe side-to-side along world X (locked to bottom at 0°, left at 90°) |
+| **W / S** or **↑ / ↓** | *(not used — axis-locked side movement only)* |
 | **Left Click** / **Space** | Fire |
-| **Right Click** / **Shift** | Bomb / Special |
-| **Q** | Rotate view 90° clockwise |
-| **Esc** | Pause / Back to menu |
+| **Right Click** / **Shift** | Bomb / Special (planned) |
+| **Q** | Toggle view 0° ↔ 90° CW (smooth tween) |
+| **Esc** | Pause / back |
 
 > Input vectors are automatically remapped when the view rotates so "up" always means "toward the top of the rotated screen".
 
 ---
 
 ## 🛠 Build & Run
+
+### What Changed (Movement Reimplementation)
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Player movement | Vec2 with `WorldFromScreen` remapping | Float X only, no remapping |
+| Rotation | Instant snap via `quarterTurns` int | Smooth tween via `currentAngle`/`targetAngle` |
+| Player Y | Axis-locked (bottom at 0°, left at 90°) | Always locked to bottom |
+| Bullet direction | Rotated with view | Always world UP (negative Y) |
+| Enemy spawn | Top (0°) / right (90°) | Same |
+| Vulnerability | Backwards (fixed) | LANDSCAPE at 90°, PORTRAIT at 0° |
+
 
 ### Requirements
 - **Visual Studio 2022** (Desktop development with C++ workload)
