@@ -22,7 +22,7 @@
 - Wave-based difficulty scaling
 
 **Technical Features:**
-- Fixed timestep game loop with accumulator
+- Delta-time game loop with clamped frame delta (50 ms cap)
 - State machine (Menu/Playing/Paused/GameOver/Leaderboard)
 - Object pooling for bullets/enemies
 - Off-screen render texture rotated via `SDL_RenderTextureRotated`
@@ -39,6 +39,7 @@
 
 | Proposed | Delivered | Justification |
 |----------|-----------|---------------|
+| Fixed timestep game loop with accumulator | Delta-time loop with 50 ms clamp | Compressed 4-day schedule; fixed timestep adds ~40 lines + interpolation complexity with no benefit for an arcade shooter. Clamping prevents tunnelling after stalls. |
 | [Feature] | [Status] | [Reason] |
 | *Fill in as development progresses* | | |
 
@@ -65,7 +66,7 @@ The gameplay loop will include shooting alien enemies in order to get your score
 ## 4. Patterns Used
 
 - **State** — `GameState` machine (Menu / Playing / Paused / GameOver / Leaderboard)
-- **Game Loop** — fixed timestep with accumulator
+- **Game Loop** — delta-time with clamped frame delta (50 ms cap)
 - **Object Pool** — bullets and enemies
 - **OOP / Inheritance** — `GameObject` base class with virtual `Update`/`Render`, derived `Player`, `Enemy`, `Bullet`, `Particle`
 - [Add/remove to match what you actually built.]
@@ -75,7 +76,8 @@ The gameplay loop will include shooting alien enemies in order to get your score
 ## 5. Mechanics & Code
 
 ### Architecture
-- Core systems (`Game`, `StateMachine`, `Renderer`, `InputManager`, `AssetManager`, `ObjectPool`) as singleton-like managers or owned by `Game`
+- Core systems (`Game`, `StateMachine`, `Renderer`, `InputManager`, `AssetManager`, `ObjectPool`) owned by `Game`
+- **Game loop:** delta-time with `SDL_GetPerformanceCounter`, clamped to 50 ms (20 FPS floor) to prevent tunnelling after stalls
 - All game entities inherit from abstract `GameObject`:
   ```cpp
   class GameObject {

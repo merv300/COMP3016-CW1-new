@@ -18,10 +18,12 @@
 | **Debugging** | Error interpretation, crash analysis, logic bugs | SDL_Init failure handling, render texture setup, input remapping math, helped create gitignore file for initial documentation commit. |
 | **Refactoring** | Modern C++ improvements, RAII, smart pointers, const-correctness | Converting raw pointers to `unique_ptr`, adding move semantics |
 | **Documentation** | README, project.md structure, AI log, code comments | This file, README.md, project.md skeleton |
-| **Architecture Discussion** | Pattern selection, class design, data flow | State vs. StateStack, ECS vs. composition, fixed timestep implementation |
+| **Architecture Discussion** | Pattern selection, class design, data flow | State vs. StateStack, ECS vs. composition, delta-time vs fixed timestep trade-offs |
 ---
 
 ## 3. Example Prompts
+
+
 
 ---
 
@@ -37,7 +39,7 @@ For each AI-generated output:
    - Performance (avoid allocations in hot paths, prefer stack/pool)
 4. **Integration** — Adapt to project architecture (naming, namespaces, include paths, coding style).
 5. **Refinement** — Add error handling, logging, comments, unit-test-style assertions.
-6. **Commit** — Meaningful message: "Add fixed-timestep GameLoop with accumulator", not "AI code".
+6. **Commit** — Meaningful message: "Add delta-time GameLoop with frame clamping", not "AI code".
 
 > **Repository Evidence:** Git history shows iterative commits refining initial AI output (e.g., `StateMachine` went through 4 commits: scaffold → enter/exit → push/pop → transition guards).
 

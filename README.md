@@ -93,7 +93,7 @@ See **[`ai-development-log.md`](./ai-development-log.md)** for transparency.
 | Phase | Milestone | Status |
 |-------|-----------|--------|
 | **Setup** | Project setup, Git workflow, basic window/renderer | 🔲 **In progress** |
-| **Core Systems** | Player movement, input remapping, fixed timestep loop | 🔲 |
+| **Core Systems** | Player movement, input remapping, delta-time loop with clamping | 🔲 |
 | **Rotation Mechanic** | Off-screen texture + `SDL_RenderTextureRotated`, input remap on rotate | 🔲 |
 | **Enemy System** | Orientation tags (portrait/landscape), spawning, object pool | 🔲 |
 | **Combat & Progression** | Collision, scoring, lives, wave/difficulty scaling | 🔲 |
