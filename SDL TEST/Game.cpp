@@ -215,28 +215,15 @@ void Game::UpdateGameOver(float deltaTime) {
 }
 
 void Game::SpawnEnemy() {
-    // Enemies always spawn from the top edge in portrait,
-    // or from the right edge in landscape (90° CW rotation).
+    // Enemies always spawn from the top edge, moving down — rotation does
+    // not affect where they enter from.
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> posDist(50.0f, 750.0f);
     std::uniform_int_distribution<int> orientDist(0, 1);
 
-    Vec2 spawnPos;
-    Vec2 velocity;
-
-    const float speed = 80.0f + wave * 12.0f;
-
-    const bool landscape = (targetAngle == 90.0f);
-    if (!landscape) {
-        // Portrait: spawn from top, move down
-        spawnPos = {posDist(gen), -30.0f};
-        velocity = {0.0f, speed};
-    } else {
-        // Landscape: spawn from right, move left
-        spawnPos = {830.0f, posDist(gen)};
-        velocity = {-speed, 0.0f};
-    }
+    Vec2 spawnPos = {posDist(gen), -30.0f};
+    Vec2 velocity = {0.0f, 80.0f + wave * 12.0f};
 
     const EnemyOrientation orientation = (orientDist(gen) == 0)
         ? EnemyOrientation::LANDSCAPE
