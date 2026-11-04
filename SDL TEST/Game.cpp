@@ -315,12 +315,16 @@ void Game::HandleCollisions() {
                 return;
             }
 
+            // Bullets never pass through an enemy. The shot is consumed on
+            // contact regardless of orientation; only a matching orientation
+            // actually destroys the enemy. This prevents shooting "through"
+            // a wrong-coloured enemy to hit a vulnerable one behind it.
+            bullet.Deactivate();
+
             if (enemy.IsVulnerableAt(quarterTurns)) {
-                bullet.Deactivate();
                 enemy.Deactivate();
                 score += enemy.GetScoreValue();
             }
-            // Wrong orientation: the bullet passes straight through.
         });
     });
 

@@ -94,7 +94,7 @@ For each AI-generated output:
 - Waves spawn as a 6×4 grid, centred horizontally, with rows alternating orientation.
 - Orange enemies are vulnerable in portrait (0°); green enemies are vulnerable in landscape (90°).
 - The formation descends steadily; the lowest enemy in each column is the front line and fires downward.
-- Orientation-gated collision: bullets only kill an enemy when the current view matches its colour.
+- Orientation-gated collision: a bullet is consumed on contact with any enemy, but only destroys it when the current view matches its colour. Wrong-coloured enemies block shots instead of letting them pass through.
 
 ### Game Flow
 - Score scales with the wave number.

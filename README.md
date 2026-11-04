@@ -45,6 +45,7 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 | Bullet direction | Rotated with view | Always world UP (negative Y) |
 | Enemy spawn | Random top-edge spawns | 6×4 grid waves, rows alternate orientation |
 | Enemy fire | None | Front-line enemies shoot down at the player |
+| Bullet collision | Passed through wrong-coloured enemies | Consumed on any enemy contact; only matching orientation destroys |
 | World / window | World matched the 1280×720 window | 480×800 world scaled and centred inside the window |
 | Vulnerability | Backwards (fixed) | LANDSCAPE at 90°, PORTRAIT at 0° |
 

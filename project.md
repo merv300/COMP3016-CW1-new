@@ -116,7 +116,7 @@ The gameplay loop will include shooting alien enemies in order to get your score
 - Each enemy carries `EnemyOrientation`: `PORTRAIT` (orange) or `LANDSCAPE` (green)
 - Waves spawn as a 6×4 grid; rows alternate orientation so the player must flip the view
 - The formation descends steadily; the lowest enemy in each column is the "front line" and fires downward
-- Bullet collision only registers damage when the current view rotation matches the enemy's orientation
+- A bullet is consumed on contact with **any** enemy, but only destroys it when the current view rotation matches the enemy's orientation — wrong-coloured enemies block shots rather than letting them pass through
 - Colour is the visual indicator of the required orientation (orange = portrait, green = landscape)
 
 ### Scoring / Lives / Respawn
