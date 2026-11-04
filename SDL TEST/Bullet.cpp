@@ -4,11 +4,13 @@
 
 namespace rtz {
 
-void Bullet::Activate(const Vec2& startPos, const Vec2& direction, float speed, BulletType bulletType) {
+void Bullet::Activate(const Vec2& startPos, const Vec2& direction, float speed, BulletType bulletType,
+                      int firedQt) {
     GameObject::Activate();
     position = startPos;
     velocity = direction * speed;
     type = bulletType;
+    firedQuarterTurns = firedQt;
     life = 0.0f;
 }
 

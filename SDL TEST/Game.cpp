@@ -169,7 +169,11 @@ void Game::UpdatePlaying(float deltaTime) {
         fireCooldown = kFireCooldown;
         const Vec2 forward{0.0f, -1.0f};
         const Vec2 spawnPos = player.GetPosition() + forward * (kPlayerSize * 0.6f);
-        bulletPool.Acquire(spawnPos, forward, kPlayerBulletSpeed, BulletType::Player);
+
+        // Capture the view rotation at fire time so a bullet's killable
+        // orientation stays fixed even if the player rotates mid-flight.
+        const int firedQt = (targetAngle == 90.0f) ? 1 : 0;
+        bulletPool.Acquire(spawnPos, forward, kPlayerBulletSpeed, BulletType::Player, firedQt);
     }
 
     // Bomb cooldown tick (starts fully charged on a fresh game).
@@ -371,17 +375,18 @@ void Game::SpawnWave() {
 }
 
 void Game::HandleCollisions() {
-    // The game only has two view states, so the target angle maps directly
-    // onto the quarter-turn index used by Enemy::IsVulnerableAt.
-    const int quarterTurns = (targetAngle == 90.0f) ? 1 : 0;
-
     // Player bullets vs enemies (orientation-gated).
-    bulletPool.ForEachActive([this, quarterTurns](Bullet& bullet) {
+    bulletPool.ForEachActive([this](Bullet& bullet) {
         if (!bullet.IsActive()) {
             return;
         }
 
-        enemyPool.ForEachActive([this, quarterTurns, &bullet](Enemy& enemy) {
+        // The quarter-turn in effect when this bullet was fired. This stays
+        // fixed for the bullet's lifetime, so rotating the view mid-flight
+        // cannot change what an in-flight bullet is allowed to kill.
+        const int bulletQt = bullet.GetFiredQuarterTurns();
+
+        enemyPool.ForEachActive([this, &bullet, bulletQt](Enemy& enemy) {
             if (!bullet.IsActive() || !enemy.IsActive()) {
                 return;
             }
@@ -397,11 +402,10 @@ void Game::HandleCollisions() {
 
             // Bullets never pass through an enemy. The shot is consumed on
             // contact regardless of orientation; only a matching orientation
-            // actually destroys the enemy. This prevents shooting "through"
-            // a wrong-coloured enemy to hit a vulnerable one behind it.
+            // actually destroys the enemy.
             bullet.Deactivate();
 
-            if (enemy.IsVulnerableAt(quarterTurns)) {
+            if (enemy.IsVulnerableAt(bulletQt)) {
                 enemy.Deactivate();
                 score += enemy.GetScoreValue();
             }
