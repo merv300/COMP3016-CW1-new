@@ -32,8 +32,15 @@
 **World and rendering**
 > "Separate the world size from the window size: render a 480×800 world to an off-screen texture, then scale and centre it inside a 1280×720 window using the rotated AABB so the whole playfield stays visible."
 
+**File persistence**
+> "Save high scores to a binary scores.dat file (top 10, name + score), load at startup, and show a leaderboard state after Game Over name entry."
+
 **Starfield**
 > "Add a parallax starfield background with 160 stars in 3 layers that drift downward and wrap around the world, matching the folk.cpp prototype."
+
+**Collision and orientation gating**
+> "Enemy bullets should only damage the player, player bullets should only kill enemies when the current view orientation matches the enemy's colour, and enemy contact should cost a life with a short respawn invincibility."
+
 
 ---
 
@@ -107,7 +114,25 @@ For each AI-generated output:
 - Score scales with the wave number.
 - Clearing the field waits two seconds, then spawns the next wave and increments the wave counter.
 - Losing all lives enters the Game Over state, with a name-entry field ready for high-score persistence.
+- Entering a name saves the score to `scores.dat` and transitions to the Leaderboard state.
+- Pressing Space on the leaderboard restarts the game.
 - Player bullets and enemy bullets use separate pools and colours (yellow vs red).
+
+### Scoring & Persistence
+- `HighScoreEntry` struct holds a 16-char name and integer score.
+- Top-10 table stored as `HighScoreEntry highScores[kMaxHighScores]` in `Game`.
+- `LoadHighScores()` reads `scores.dat` at startup (count + binary entries); starts empty if the file doesn't exist.
+- `SaveHighScores()` writes the table back to `scores.dat` whenever a new score qualifies.
+- `AddHighScore()` inserts in descending score order, shifting entries down and clamping to `kMaxHighScores`.
+- Game Over → name entry → `AddHighScore()` + `SaveHighScores()` → Leaderboard state.
+- Leaderboard renders score-proportional bars (gold/silver/bronze for top 3); SDL3_ttf needed for real text.
+- Pressing Space on the leaderboard restarts via `ResetGame()`.
+
+### Static Analysis (C6385/C6386)
+- All `highScores[]` reads and writes in `AddHighScore()`, `LoadHighScores()`, `SaveHighScores()`, and `RenderLeaderboard()` are guarded with explicit bounds checks against `kMaxHighScores` and `highScoreCount`.
+- `AddHighScore()` re-validates `insertAt` immediately before the final write because the analyzer cannot track the variable across the shift loop.
+- This suppresses Microsoft Code Analysis warnings C6385 (invalid data access) and C6386 (buffer overrun) without using `#pragma warning(disable)`.
+
 
 ### Documentation
 - `README.md`: controls, gameplay overview, and a "What Changed" comparison table.

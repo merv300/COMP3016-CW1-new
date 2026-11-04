@@ -1,8 +1,9 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "Game.h"
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
+#include <cstring>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -21,6 +22,63 @@ std::mt19937& Rng() {
 float RandomRange(float low, float high) {
     std::uniform_real_distribution<float> distribution(low, high);
     return distribution(Rng());
+}
+
+// 5x7 bitmap digits for rendering scores without SDL3_ttf.
+// Each row is a bitmask where bit 4 (leftmost) is the first column.
+constexpr uint8_t kDigitFont[10][7] = {
+    { 0b11111, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11111 }, // 0
+    { 0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110 }, // 1
+    { 0b11111, 0b00001, 0b00001, 0b11111, 0b10000, 0b10000, 0b11111 }, // 2
+    { 0b11111, 0b00001, 0b00001, 0b01111, 0b00001, 0b00001, 0b11111 }, // 3
+    { 0b10001, 0b10001, 0b10001, 0b11111, 0b00001, 0b00001, 0b00001 }, // 4
+    { 0b11111, 0b10000, 0b10000, 0b11111, 0b00001, 0b00001, 0b11111 }, // 5
+    { 0b11111, 0b10000, 0b10000, 0b11111, 0b10001, 0b10001, 0b11111 }, // 6
+    { 0b11111, 0b00001, 0b00001, 0b00001, 0b00001, 0b00001, 0b00001 }, // 7
+    { 0b11111, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b11111 }, // 8
+    { 0b11111, 0b10001, 0b10001, 0b11111, 0b00001, 0b00001, 0b11111 }, // 9
+};
+
+// Draws an integer as bitmap digits (no SDL3_ttf dependency).
+// Returns the pixel width of the rendered number.
+int DrawNumber(SDL_Renderer* renderer, int x, int y, int value, int scale = 2) {
+    if (value < 0) {
+        value = 0;
+    }
+
+    // Extract digits (least significant first).
+    int digits[10] = {0};
+    int digitCount = 1;
+    int temp = value;
+    while (temp >= 10) {
+        digits[digitCount - 1] = temp % 10;
+        temp /= 10;
+        ++digitCount;
+    }
+    digits[digitCount - 1] = temp;
+
+    // Draw most-significant digit first.
+    int drawX = x - digitCount * 5 * scale;
+    for (int d = digitCount - 1; d >= 0; --d) {
+        uint8_t digit = static_cast<uint8_t>(digits[d]);
+        for (int row = 0; row < 7; ++row) {
+            uint8_t rowBits = kDigitFont[digit][row];
+            for (int col = 0; col < 5; ++col) {
+                if ((rowBits >> (4 - col)) & 1u) {
+                    SDL_FRect pixel{
+                        static_cast<float>(drawX + col * scale),
+                        static_cast<float>(y + row * scale),
+                        static_cast<float>(scale),
+                        static_cast<float>(scale)
+                    };
+                    SDL_RenderFillRect(renderer, &pixel);
+                }
+            }
+        }
+        drawX += 5 * scale + scale; // digit width + 1px gap
+    }
+
+    return digitCount * 5 * scale + (digitCount - 1) * scale;
 }
 
 } // namespace
@@ -85,6 +143,7 @@ void Game::Initialize() {
     SDL_SetTextureScaleMode(worldTexture, SDL_SCALEMODE_LINEAR);
 
     ResetGame();
+    LoadHighScores();
 }
 
 void Game::Shutdown() {
@@ -130,6 +189,8 @@ void Game::Update(float deltaTime) {
 
     if (state == GameState::Playing) {
         UpdatePlaying(deltaTime);
+    } else if (state == GameState::Leaderboard) {
+        UpdateLeaderboard(deltaTime);
     } else {
         UpdateGameOver(deltaTime);
     }
@@ -337,8 +398,10 @@ void Game::UpdateGameOver(float deltaTime) {
             nameBuffer[--nameLength] = '\0';
         }
         if (input.WasKeyPressed(SDL_SCANCODE_RETURN) || input.WasKeyPressed(SDL_SCANCODE_KP_ENTER)) {
+            AddHighScore(nameBuffer, score);
+            SaveHighScores();
             nameEntryActive = false;
-            // TODO: save high score
+            state = GameState::Leaderboard;
         }
     }
 
@@ -346,6 +409,119 @@ void Game::UpdateGameOver(float deltaTime) {
         if (!nameEntryActive) {
             ResetGame();
         }
+    }
+}
+
+void Game::LoadHighScores() {
+    FILE* file = std::fopen(kScoresFilename, "rb");
+    if (file == nullptr) {
+        // No save file yet — start with an empty table.
+        highScoreCount = 0;
+        return;
+    }
+
+    // Read the entry count, then each entry.
+    int count = 0;
+    if (std::fread(&count, sizeof(count), 1, file) != 1) {
+        count = 0;
+    }
+    if (count < 0 || count > kMaxHighScores) {
+        count = 0;
+    }
+
+    for (int i = 0; i < count; ++i) {
+        // Bounds check: never read past the table size (fixes C6385/C6386).
+        if (i >= kMaxHighScores) {
+            break;
+        }
+        if (std::fread(&highScores[i], sizeof(HighScoreEntry), 1, file) != 1) {
+            break;
+        }
+        highScoreCount = i + 1;
+    }
+
+    std::fclose(file);
+}
+
+void Game::SaveHighScores() {
+    FILE* file = std::fopen(kScoresFilename, "wb");
+    if (file == nullptr) {
+        return;
+    }
+
+    std::fwrite(&highScoreCount, sizeof(highScoreCount), 1, file);
+    for (int i = 0; i < highScoreCount; ++i) {
+        // Bounds check: never write past the table size (fixes C6385/C6386).
+        if (i >= kMaxHighScores) {
+            break;
+        }
+        std::fwrite(&highScores[i], sizeof(HighScoreEntry), 1, file);
+    }
+
+    std::fclose(file);
+}
+
+void Game::AddHighScore(const char* name, int scoreValue) {
+    // Find the insertion point: keep the table sorted descending by score.
+    int insertAt = highScoreCount;
+    while (insertAt > 0 && insertAt <= kMaxHighScores &&
+           highScores[insertAt - 1].score < scoreValue) {
+        --insertAt;
+    }
+
+    // Bounds check: never write outside the high score table (fixes C6385/C6386).
+    if (insertAt < 0 || insertAt >= kMaxHighScores) {
+        return;
+    }
+
+    // If the table is full and the new score doesn't beat the worst entry, ignore.
+    if (highScoreCount >= kMaxHighScores &&
+        highScores[kMaxHighScores - 1].score >= scoreValue) {
+        return;
+    }
+
+    // Shift entries down to make room.
+    int end = highScoreCount;
+    if (end < kMaxHighScores) {
+        ++end;
+    }
+    // Bounds check: clamp end to table size.
+    if (end > kMaxHighScores) {
+        end = kMaxHighScores;
+    }
+    for (int i = end - 1; i > insertAt; --i) {
+        // Bounds check: only shift valid indices (fixes C6385/C6386).
+        if (i >= 0 && i < kMaxHighScores && i - 1 >= 0 && i - 1 < kMaxHighScores) {
+            highScores[i] = highScores[i - 1];
+        }
+    }
+
+    // Insert the new entry.
+    // Bounds check: analyzer may not track insertAt across the shift loop,
+    // so re-validate before writing (fixes C6386).
+    if (insertAt < 0 || insertAt >= kMaxHighScores) {
+        return;
+    }
+
+    HighScoreEntry entry = {};
+    std::strncpy(entry.name, name, sizeof(entry.name) - 1);
+    entry.name[sizeof(entry.name) - 1] = '\0';
+    entry.score = scoreValue;
+    highScores[insertAt] = entry;
+
+    if (highScoreCount < kMaxHighScores) {
+        ++highScoreCount;
+    }
+}
+
+void Game::UpdateLeaderboard(float deltaTime) {
+    (void)deltaTime;
+
+    if (input.WasKeyPressed(SDL_SCANCODE_SPACE) ||
+        input.WasKeyPressed(SDL_SCANCODE_RETURN) ||
+        input.WasKeyPressed(SDL_SCANCODE_KP_ENTER) ||
+        input.WasKeyPressed(SDL_SCANCODE_ESCAPE)) {
+        ResetGame();
     }
 }
 
@@ -596,16 +772,9 @@ void Game::RenderUI() {
     int windowHeight = 0;
     SDL_GetWindowSizeInPixels(window, &windowWidth, &windowHeight);
 
-    // Score
-    char buf[64];
+    // Score — bitmap digits in top-right (white)
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-
-    // Draw score text using simple rects (placeholder for real font)
-    snprintf(buf, sizeof(buf), "SCORE: %d", score);
-    // TODO: Use SDL3_ttf for real text. For now draw a bar.
-    SDL_FRect scoreBar{10.0f, 10.0f, static_cast<float>(std::min<int>(score / 10, 300)), 24.0f};
-    SDL_SetRenderDrawColor(renderer, 80, 200, 120, 255);
-    SDL_RenderFillRect(renderer, &scoreBar);
+    const int scoreTextWidth = DrawNumber(renderer, windowWidth - 20, 10, score);
 
     // Lives
     for (int i = 0; i < lives; ++i) {
@@ -615,7 +784,6 @@ void Game::RenderUI() {
     }
 
     // Wave
-    snprintf(buf, sizeof(buf), "WAVE: %d", wave);
     SDL_FRect waveBar{600.0f, 10.0f, static_cast<float>(wave * 30), 16.0f};
     SDL_SetRenderDrawColor(renderer, 200, 160, 80, 255);
     SDL_RenderFillRect(renderer, &waveBar);
@@ -676,6 +844,78 @@ void Game::RenderUI() {
             // Press Space to restart
         }
     }
+
+    // Leaderboard screen
+    if (state == GameState::Leaderboard) {
+        RenderLeaderboard(windowWidth, windowHeight);
+    }
+}
+
+void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
+    // Semi-transparent overlay
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
+    SDL_FRect overlay{0.0f, 0.0f,
+                      static_cast<float>(windowWidth),
+                      static_cast<float>(windowHeight)};
+    SDL_RenderFillRect(renderer, &overlay);
+
+    // Leaderboard box, centred in the window
+    const float boxW = 400.0f;
+    const float boxH = 300.0f;
+    const SDL_FRect box{(static_cast<float>(windowWidth) - boxW) * 0.5f,
+                        (static_cast<float>(windowHeight) - boxH) * 0.5f,
+                        boxW, boxH};
+    SDL_SetRenderDrawColor(renderer, 40, 40, 60, 255);
+    SDL_RenderFillRect(renderer, &box);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_RenderRect(renderer, &box);
+
+    // Title bar
+    SDL_SetRenderDrawColor(renderer, 80, 200, 120, 255);
+    SDL_FRect titleBar{box.x + 20.0f, box.y + 30.0f, 200.0f, 24.0f};
+    SDL_RenderFillRect(renderer, &titleBar);
+
+    // Entries (bars only — SDL3_ttf needed for real text)
+    for (int i = 0; i < highScoreCount && i < kMaxHighScores; ++i) {
+        // Bounds check: only read valid entries (fixes C6385/C6386).
+        if (i < 0 || i >= kMaxHighScores || i >= highScoreCount) {
+            break;
+        }
+
+        const float entryY = box.y + 70.0f + i * 24.0f;
+
+        // Rank indicator
+        SDL_FRect rankBar{box.x + 40.0f, entryY, 16.0f, 16.0f};
+        if (i == 0) {
+            SDL_SetRenderDrawColor(renderer, 255, 220, 80, 255);   // gold
+        } else if (i == 1) {
+            SDL_SetRenderDrawColor(renderer, 192, 192, 192, 255);  // silver
+        } else if (i == 2) {
+            SDL_SetRenderDrawColor(renderer, 205, 127, 50, 255);   // bronze
+        } else {
+            SDL_SetRenderDrawColor(renderer, 120, 220, 255, 255);  // blue
+        }
+        SDL_RenderFillRect(renderer, &rankBar);
+
+        // Score bar length proportional to score
+        const float maxScoreBarW = 200.0f;
+        float scoreBarW = 0.0f;
+        // Bounds check: guard highScores[0] access (fixes C6385/C6386).
+        if (highScoreCount > 0 && highScores[0].score > 0) {
+            scoreBarW = std::min(maxScoreBarW,
+                                 (static_cast<float>(highScores[i].score) /
+                                  static_cast<float>(highScores[0].score)) * maxScoreBarW);
+        }
+        SDL_FRect scoreBar{box.x + 70.0f, entryY + 2.0f, scoreBarW, 12.0f};
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderFillRect(renderer, &scoreBar);
+    }
+
+    // Hint
+    SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
+    SDL_FRect hintBar{box.x + 40.0f, box.y + boxH - 40.0f, 200.0f, 16.0f};
+    SDL_RenderFillRect(renderer, &hintBar);
 }
 
 } // namespace rtz

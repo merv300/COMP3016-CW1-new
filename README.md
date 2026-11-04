@@ -30,6 +30,12 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 | **F11** | Toggle fullscreen (desktop resolution) |
 | **Esc** | Quit / back |
 
+### Scoring
+- Score scales with the wave number (100 × wave per kill).
+- Bomb kills award a flat score per enemy.
+- High scores are saved to `scores.dat` (top 10, name + score).
+- Enter your name at Game Over, then view the leaderboard. Press Space to restart.
+
 > The world is a fixed 480×800 playfield rendered off-screen, then scaled to fit the 1280×720 window and rotated about its centre. Input is never remapped: A/D always moves along world X.
 
 ---
@@ -48,6 +54,7 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 | Enemy fire | None | Front-line enemies shoot down at the player |
 | Bullet collision | Passed through wrong-coloured enemies | Consumed on any enemy contact; only matching orientation destroys |
 | Bomb | Planned only | Right-click bomb with 5 s cooldown and orientation-ignoring AoE |
+| High scores | None | Top-10 table saved to scores.dat; name entry at Game Over; leaderboard state |
 | World / window | World matched the 1280×720 window | 480×800 world scaled and centred inside the window |
 | Vulnerability | Backwards (fixed) | LANDSCAPE at 90°, PORTRAIT at 0° |
 

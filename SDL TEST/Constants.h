@@ -59,4 +59,8 @@ inline constexpr float kEnemyShootMax = 4.5f;
 // Delay between clearing a wave and the next wave entering.
 inline constexpr float kWaveClearDelay = 2.0f;
 
+// --- High scores ---
+inline constexpr int kMaxHighScores = 10;
+inline constexpr const char* kScoresFilename = "scores.dat";
+
 } // namespace rtz

@@ -133,8 +133,12 @@ The gameplay loop will include shooting alien enemies in order to get your score
 - Game Over → enter name → Leaderboard
 
 ### File Loading
-- `assets/scores.dat` — binary or JSON high score table (top 10)
-- `assets/config.json` — keybinds, volume, difficulty preset
+- `scores.dat` — binary high score table (top 10), loaded at startup and saved when a new score qualifies.
+- `assets/config.json` — keybinds, volume, difficulty preset (planned).
+
+### Static Analysis (C6385/C6386)
+- All high score table accesses in `AddHighScore()`, `LoadHighScores()`, `SaveHighScores()`, and `RenderLeaderboard()` use explicit bounds checks against `kMaxHighScores` and `highScoreCount` to suppress Microsoft Code Analysis warnings C6385 (invalid data access) and C6386 (buffer overrun) without `#pragma warning(disable)`.
+- `AddHighScore()` re-validates `insertAt` immediately before the final write because the analyzer cannot track the variable across the shift loop.
 
 ---
 
