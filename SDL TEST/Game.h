@@ -68,6 +68,7 @@ private:
     float targetAngle = 0.0f;
 
     bool running = true;
+    bool isFullscreen = false;
 
     // Gameplay stats
     int score = 0;

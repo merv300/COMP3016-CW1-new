@@ -77,6 +77,7 @@ For each AI-generated output:
 - Fixed 480×800 world rendered into an off-screen `SDL_Texture`, separate from the 1280×720 window.
 - `SDL_RenderTextureRotated` presents the world at `currentAngle`, with the destination rect scaled and centred.
 - Scale is derived from the rotated world's axis-aligned bounding box (`|cos|`/`|sin|`), so the whole playfield fits at both 0° and 90°.
+- `F11` toggles borderless fullscreen; the destination rect and UI overlay use the live window pixel size, so layout stays centred after the resize.
 - Reference grid and a corner marker make the current rotation readable.
 
 ### Rotation Mechanic

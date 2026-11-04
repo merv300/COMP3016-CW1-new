@@ -120,6 +120,11 @@ void Game::Update(float deltaTime) {
         running = false;
     }
 
+    if (input.WasKeyPressed(SDL_SCANCODE_F11)) {
+        isFullscreen = !isFullscreen;
+        SDL_SetWindowFullscreen(window, isFullscreen);
+    }
+
     if (state == GameState::Playing) {
         UpdatePlaying(deltaTime);
     } else {
@@ -415,6 +420,12 @@ void Game::Render() {
     // 2. Present that texture scaled to fit the window and rotated about its
     //    centre. The AABB of the rotated world determines the scale, so the
     //    whole playfield always stays visible at either orientation.
+    //    Querying the window each frame keeps the layout correct after an
+    //    F11 fullscreen toggle changes the available size.
+    int windowWidth = 0;
+    int windowHeight = 0;
+    SDL_GetWindowSizeInPixels(window, &windowWidth, &windowHeight);
+
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
@@ -424,14 +435,14 @@ void Game::Render() {
 
     const float aabbWidth = kWorldWidth * cosine + kWorldHeight * sine;
     const float aabbHeight = kWorldWidth * sine + kWorldHeight * cosine;
-    const float scale = std::min(static_cast<float>(kWindowWidth) / aabbWidth,
-                                 static_cast<float>(kWindowHeight) / aabbHeight);
+    const float scale = std::min(static_cast<float>(windowWidth) / aabbWidth,
+                                 static_cast<float>(windowHeight) / aabbHeight);
 
     const float drawWidth = kWorldWidth * scale;
     const float drawHeight = kWorldHeight * scale;
     const SDL_FRect destination{
-        (static_cast<float>(kWindowWidth) - drawWidth) * 0.5f,
-        (static_cast<float>(kWindowHeight) - drawHeight) * 0.5f,
+        (static_cast<float>(windowWidth) - drawWidth) * 0.5f,
+        (static_cast<float>(windowHeight) - drawHeight) * 0.5f,
         drawWidth,
         drawHeight
     };
@@ -504,19 +515,23 @@ void Game::RenderUI() {
 
     // Game Over screen
     if (state == GameState::GameOver) {
+        int windowWidth = 0;
+        int windowHeight = 0;
+        SDL_GetWindowSizeInPixels(window, &windowWidth, &windowHeight);
+
         // Semi-transparent overlay
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
         SDL_FRect overlay{0.0f, 0.0f,
-                          static_cast<float>(kWindowWidth),
-                          static_cast<float>(kWindowHeight)};
+                          static_cast<float>(windowWidth),
+                          static_cast<float>(windowHeight)};
         SDL_RenderFillRect(renderer, &overlay);
 
         // Game Over box, centred in the window
         const float boxW = 400.0f;
         const float boxH = 300.0f;
-        const SDL_FRect box{(static_cast<float>(kWindowWidth) - boxW) * 0.5f,
-                            (static_cast<float>(kWindowHeight) - boxH) * 0.5f,
+        const SDL_FRect box{(static_cast<float>(windowWidth) - boxW) * 0.5f,
+                            (static_cast<float>(windowHeight) - boxH) * 0.5f,
                             boxW, boxH};
         SDL_SetRenderDrawColor(renderer, 40, 40, 60, 255);
         SDL_RenderFillRect(renderer, &box);

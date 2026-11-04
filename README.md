@@ -27,6 +27,7 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 | **Left Click** / **Space** | Fire |
 | **Right Click** / **Shift** | Bomb / Special (planned) |
 | **Q** | Toggle view 0° ↔ 90° CW (smooth tween) |
+| **F11** | Toggle fullscreen (desktop resolution) |
 | **Esc** | Quit / back |
 
 > The world is a fixed 480×800 playfield rendered off-screen, then scaled to fit the 1280×720 window and rotated about its centre. Input is never remapped: A/D always moves along world X.

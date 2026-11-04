@@ -80,6 +80,7 @@ The gameplay loop will include shooting alien enemies in order to get your score
 - **Game loop:** delta-time with `SDL_GetPerformanceCounter`, clamped to 50 ms (20 FPS floor) to prevent tunnelling after stalls
 - **Player movement:** horizontal-only in world X (A/D), Y locked near the bottom edge. No input remapping — rotation is purely visual.
 - **World / window:** a fixed 480×800 world is rendered off-screen and scaled to fit the 1280×720 window, preserving aspect ratio.
+- **Display:** `F11` toggles borderless fullscreen via `SDL_SetWindowFullscreen`; the renderer queries the live window pixel size each frame so the rotated world stays centred at any resolution.
 - **Rotation:** `currentAngle`/`targetAngle` tween pair; Q toggles between 0° and 90°
 - All game entities inherit from abstract `GameObject`:
   ```cpp
