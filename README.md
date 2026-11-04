@@ -25,7 +25,7 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 | **A / D** or **← / →** | Strafe side-to-side along world X (always horizontal; the view rotation is visual) |
 | **W / S** or **↑ / ↓** | *(not used — axis-locked side movement only)* |
 | **Left Click** / **Space** | Fire |
-| **Right Click** / **Shift** | Bomb / Special (planned) |
+| **Right Click** | Bomb — detonates on contact and kills all enemies in its blast radius (5 s cooldown) |
 | **Q** | Toggle view 0° ↔ 90° CW (smooth tween) |
 | **F11** | Toggle fullscreen (desktop resolution) |
 | **Esc** | Quit / back |
@@ -47,6 +47,7 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 | Enemy spawn | Random top-edge spawns | 6×4 grid waves, rows alternate orientation |
 | Enemy fire | None | Front-line enemies shoot down at the player |
 | Bullet collision | Passed through wrong-coloured enemies | Consumed on any enemy contact; only matching orientation destroys |
+| Bomb | Planned only | Right-click bomb with 5 s cooldown and orientation-ignoring AoE |
 | World / window | World matched the 1280×720 window | 480×800 world scaled and centred inside the window |
 | Vulnerability | Backwards (fixed) | LANDSCAPE at 90°, PORTRAIT at 0° |
 

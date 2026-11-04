@@ -69,6 +69,9 @@ void Game::Initialize() {
     // hundreds of frames per second and wasting the CPU.
     SDL_SetRenderVSync(renderer, 1);
 
+    // Needed for the bomb glow and explosion fade (alpha blending).
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
     // The world texture is the fixed playfield size, not the window size.
     worldTexture = SDL_CreateTexture(renderer,
                                      SDL_PIXELFORMAT_RGBA8888,
@@ -169,6 +172,19 @@ void Game::UpdatePlaying(float deltaTime) {
         bulletPool.Acquire(spawnPos, forward, kPlayerBulletSpeed, BulletType::Player);
     }
 
+    // Bomb cooldown tick (starts fully charged on a fresh game).
+    if (bombCooldown < kBombCooldownTime) {
+        bombCooldown += deltaTime;
+    }
+
+    // Bomb fire: right-click while the cooldown is fully charged.
+    if (input.IsRightMouseDown() && bombCooldown >= kBombCooldownTime) {
+        bombCooldown = 0.0f;
+        const Vec2 spawnPos = player.GetPosition() +
+                              Vec2{0.0f, -kPlayerSize * 0.5f - kBombSize * 0.5f};
+        bombPool.Acquire(spawnPos, Vec2{0.0f, -kBombSpeed});
+    }
+
     // Update bullets.
     bulletPool.ForEachActive([deltaTime](Bullet& bullet) { bullet.Update(deltaTime); });
 
@@ -178,6 +194,11 @@ void Game::UpdatePlaying(float deltaTime) {
 
     // The whole formation descends.
     enemyPool.ForEachActive([deltaTime](Enemy& enemy) { enemy.Update(deltaTime); });
+
+    // Bombs move, then detonate on contact; explosions fade out.
+    bombPool.ForEachActive([deltaTime](Bomb& bomb) { bomb.Update(deltaTime); });
+    UpdateBombs();
+    explosionPool.ForEachActive([deltaTime](Explosion& explosion) { explosion.Update(deltaTime); });
 
     HandleCollisions();
 
@@ -237,6 +258,57 @@ void Game::UpdateEnemyFire(float deltaTime) {
             const Vec2 spawnPos{origin.x, origin.y + kEnemyH * 0.5f};
             enemyBulletPool.Acquire(spawnPos, Vec2{0.0f, 1.0f},
                                     kEnemyBulletSpeed, BulletType::Enemy);
+        }
+    });
+}
+
+void Game::UpdateBombs() {
+    bombPool.ForEachActive([this](Bomb& bomb) {
+        if (!bomb.IsActive()) {
+            return;
+        }
+
+        // Bomb detonates on contact with any enemy, regardless of colour.
+        const SDL_FRect bombBounds = bomb.GetBounds();
+        bool detonated = false;
+
+        enemyPool.ForEachActive([this, &bomb, &bombBounds, &detonated](Enemy& enemy) {
+            if (detonated || !enemy.IsActive()) {
+                return;
+            }
+
+            const SDL_FRect e = enemy.GetBounds();
+            const bool overlap = !(bombBounds.x + bombBounds.w < e.x || e.x + e.w < bombBounds.x ||
+                                   bombBounds.y + bombBounds.h < e.y || e.y + e.h < bombBounds.y);
+            if (!overlap) {
+                return;
+            }
+
+            const Vec2 origin = bomb.GetPosition();
+            bomb.Deactivate();
+            detonated = true;
+            DetonateBomb(origin.x, origin.y);
+        });
+    });
+}
+
+void Game::DetonateBomb(float centerX, float centerY) {
+    // Visual blast.
+    explosionPool.Acquire(Vec2{centerX, centerY});
+
+    // The bomb deliberately ignores orientation: every enemy inside the
+    // radius dies, which is what makes it a panic button.
+    enemyPool.ForEachActive([this, centerX, centerY](Enemy& enemy) {
+        if (!enemy.IsActive()) {
+            return;
+        }
+
+        const Vec2 position = enemy.GetPosition();
+        const float dx = position.x - centerX;
+        const float dy = position.y - centerY;
+        if (dx * dx + dy * dy <= kExplosionRadius * kExplosionRadius) {
+            enemy.Deactivate();
+            score += static_cast<int>(kBombScore);
         }
     });
 }
@@ -391,6 +463,7 @@ void Game::ResetGame() {
     wave = 1;
     waveClearTimer = kWaveClearDelay;
     fireCooldown = 0.0f;
+    bombCooldown = kBombCooldownTime;
     respawnInvincibilityTimer = 0.0f;
     currentAngle = 0.0f;
     targetAngle = 0.0f;
@@ -402,6 +475,8 @@ void Game::ResetGame() {
     bulletPool.ReleaseAll();
     enemyBulletPool.ReleaseAll();
     enemyPool.ReleaseAll();
+    bombPool.ReleaseAll();
+    explosionPool.ReleaseAll();
 
     player.SetPosition({kWorldWidth * 0.5f, kPlayerY});
     player.SetMoveIntent(0.0f);
@@ -478,8 +553,14 @@ void Game::DrawWorld() {
     bulletPool.ForEachActive([this](Bullet& bullet) { bullet.Render(renderer); });
     enemyBulletPool.ForEachActive([this](Bullet& bullet) { bullet.Render(renderer); });
 
+    // Bombs
+    bombPool.ForEachActive([this](Bomb& bomb) { bomb.Render(renderer); });
+
     // Enemies
     enemyPool.ForEachActive([this](Enemy& enemy) { enemy.Render(renderer); });
+
+    // Explosions sit above enemies so kills read clearly.
+    explosionPool.ForEachActive([this](Explosion& explosion) { explosion.Render(renderer); });
 
     // Player (render last so it sits on top)
     if (respawnInvincibilityTimer <= 0.0f ||
@@ -489,6 +570,10 @@ void Game::DrawWorld() {
 }
 
 void Game::RenderUI() {
+    int windowWidth = 0;
+    int windowHeight = 0;
+    SDL_GetWindowSizeInPixels(window, &windowWidth, &windowHeight);
+
     // Score
     char buf[64];
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
@@ -513,12 +598,30 @@ void Game::RenderUI() {
     SDL_SetRenderDrawColor(renderer, 200, 160, 80, 255);
     SDL_RenderFillRect(renderer, &waveBar);
 
+    // Bomb cooldown bar (top-right). Bright yellow when fully charged.
+    {
+        const float barW = 110.0f;
+        const float barH = 16.0f;
+        const float barX = static_cast<float>(windowWidth) - barW - 20.0f;
+        const float barY = 40.0f;
+
+        SDL_FRect background{barX, barY, barW, barH};
+        SDL_SetRenderDrawColor(renderer, 25, 25, 45, 255);
+        SDL_RenderFillRect(renderer, &background);
+
+        const float charge = std::min(1.0f, bombCooldown / kBombCooldownTime);
+        SDL_FRect fill{barX + 2.0f, barY + 2.0f,
+                       (barW - 4.0f) * charge, barH - 4.0f};
+        if (charge >= 1.0f) {
+            SDL_SetRenderDrawColor(renderer, 255, 220, 80, 255);
+        } else {
+            SDL_SetRenderDrawColor(renderer, 180, 100, 50, 255);
+        }
+        SDL_RenderFillRect(renderer, &fill);
+    }
+
     // Game Over screen
     if (state == GameState::GameOver) {
-        int windowWidth = 0;
-        int windowHeight = 0;
-        SDL_GetWindowSizeInPixels(window, &windowWidth, &windowHeight);
-
         // Semi-transparent overlay
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);

@@ -97,6 +97,12 @@ For each AI-generated output:
 - The formation descends steadily; the lowest enemy in each column is the front line and fires downward.
 - Orientation-gated collision: a bullet is consumed on contact with any enemy, but only destroys it when the current view matches its colour. Wrong-coloured enemies block shots instead of letting them pass through.
 
+### Bomb & Explosions
+- Right-click fires a bomb upward; a 5-second cooldown prevents spam and starts charged.
+- The bomb detonates on contact with any enemy, ignoring orientation, and kills every enemy inside an 80 px radius.
+- A flat score is awarded per enemy destroyed by the blast.
+- The explosion is cosmetic only: a growing ring and shrinking core that fade over 0.4 s.
+
 ### Game Flow
 - Score scales with the wave number.
 - Clearing the field waits two seconds, then spawns the next wave and increments the wave counter.

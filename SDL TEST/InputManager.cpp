@@ -23,12 +23,16 @@ void InputManager::ProcessEvent(const SDL_Event& event) {
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
         if (event.button.button == SDL_BUTTON_LEFT) {
             mouseLeftDown = true;
+        } else if (event.button.button == SDL_BUTTON_RIGHT) {
+            mouseRightDown = true;
         }
         break;
 
     case SDL_EVENT_MOUSE_BUTTON_UP:
         if (event.button.button == SDL_BUTTON_LEFT) {
             mouseLeftDown = false;
+        } else if (event.button.button == SDL_BUTTON_RIGHT) {
+            mouseRightDown = false;
         }
         break;
 

@@ -27,8 +27,18 @@ inline constexpr float kPlayerInvuln = 1.5f;
 inline constexpr float kFireCooldown = 0.22f;
 inline constexpr float kPlayerBulletSpeed = 700.0f;
 
+// --- Bomb ---
+inline constexpr float kBombSize = 14.0f;
+inline constexpr float kBombSpeed = 380.0f;
+inline constexpr float kBombCooldownTime = 5.0f;
+inline constexpr float kBombScore = 10.0f;
+
 // --- Enemy bullets ---
 inline constexpr float kEnemyBulletSpeed = 240.0f;
+
+// --- Explosion ---
+inline constexpr float kExplosionRadius = 80.0f;
+inline constexpr float kExplosionDuration = 0.4f;
 
 // --- Enemy grid ---
 inline constexpr int kEnemyCols = 6;

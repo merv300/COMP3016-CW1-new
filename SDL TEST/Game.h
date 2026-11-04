@@ -7,6 +7,8 @@
 #include "Player.h"
 #include "Bullet.h"
 #include "Enemy.h"
+#include "Bomb.h"
+#include "Explosion.h"
 #include "ObjectPool.h"
 
 namespace rtz {
@@ -46,6 +48,8 @@ private:
 
     void SpawnWave();
     void HandleCollisions();
+    void UpdateBombs();
+    void DetonateBomb(float centerX, float centerY);
     void DamagePlayer();
     void ResetGame();
     void RenderUI();
@@ -60,6 +64,8 @@ private:
     ObjectPool<Bullet> bulletPool{128};
     ObjectPool<Bullet> enemyBulletPool{128};
     ObjectPool<Enemy> enemyPool{64};
+    ObjectPool<Bomb> bombPool{32};
+    ObjectPool<Explosion> explosionPool{16};
 
     GameState state = GameState::Playing;
 
@@ -76,6 +82,7 @@ private:
     int wave = 1;
     float waveClearTimer = 0.0f;
     float fireCooldown = 0.0f;
+    float bombCooldown = kBombCooldownTime; // start ready
     float respawnInvincibilityTimer = 0.0f;
     static constexpr float kRespawnInvincibilityTime = kPlayerInvuln;
     char nameBuffer[16] = {0};

@@ -25,6 +25,7 @@ public:
     bool WasKeyPressed(SDL_Scancode scancode) const;
 
     bool IsFiring() const { return firing; }
+    bool IsRightMouseDown() const { return mouseRightDown; }
     bool QuitRequested() const { return quitRequested; }
 
     // Movement in screen space (normalised), built from WASD or the arrow keys.
@@ -34,6 +35,7 @@ private:
     const bool* keys = nullptr;
     std::unordered_set<int> pressedThisFrame;
     bool mouseLeftDown = false;
+    bool mouseRightDown = false;
     bool firing = false;
     bool quitRequested = false;
 };

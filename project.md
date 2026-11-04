@@ -120,6 +120,12 @@ The gameplay loop will include shooting alien enemies in order to get your score
 - A bullet is consumed on contact with **any** enemy, but only destroys it when the current view rotation matches the enemy's orientation — wrong-coloured enemies block shots rather than letting them pass through
 - Colour is the visual indicator of the required orientation (orange = portrait, green = landscape)
 
+### Bomb & Explosions
+- Right-click launches a bomb upward at 380 px/s; it is gated by a 5-second cooldown that starts fully charged
+- The bomb detonates on contact with **any** enemy, ignoring orientation
+- Every enemy within the 80 px blast radius dies and awards a flat bomb score, making it a panic button for mixed-colour waves
+- The explosion is a short-lived visual effect: a growing outer ring plus a shrinking hot core that fades over 0.4 s
+
 ### Scoring / Lives / Respawn
 - Base score per kill × wave multiplier
 - 3 lives; respawn grants 2s invincibility (blinking sprite)
