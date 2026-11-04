@@ -1,16 +1,17 @@
 #include "Enemy.h"
 
-#include <algorithm>
+#include "Constants.h"
 
 namespace rtz {
 
-void Enemy::Activate(const Vec2& startPos, const Vec2& vel, EnemyOrientation orient, int waveNumber) {
+void Enemy::Activate(const Vec2& startPos, EnemyOrientation orient, int waveNumber) {
     GameObject::Activate();
     position = startPos;
-    velocity = vel;
     orientation = orient;
     wave = waveNumber;
     hitFlashTimer = 0.0f;
+    shootTimer = kEnemyShootMin; // Game re-randomises this right after acquire
+    descendSpeed = kEnemyDescendSpeed;
 
     // Scale score with wave
     scoreValue = 100 * wave;
@@ -32,35 +33,25 @@ bool Enemy::IsVulnerableAt(int quarterTurns) const {
 }
 
 void Enemy::Update(float deltaTime) {
-    position += velocity * deltaTime;
+    // The whole formation descends towards the player.
+    position.y += descendSpeed * deltaTime;
 
     if (hitFlashTimer > 0.0f) {
         hitFlashTimer -= deltaTime;
     }
 
-    // Despawn if off-screen with margin
+    // Deactivate once the enemy has fully left the world.
     const float margin = 60.0f;
-    if (position.x < -margin || position.x > 800.0f + margin ||
-        position.y < -margin || position.y > 800.0f + margin) {
+    if (position.x < -margin || position.x > kWorldWidth + margin ||
+        position.y - kEnemyH * 0.5f > kWorldHeight + margin) {
         Deactivate();
     }
 }
 
 void Enemy::Render(SDL_Renderer* renderer) {
-    // Shape indicates required orientation:
-    // LANDSCAPE = wide rectangle (horizontal)
-    // PORTRAIT = tall rectangle (vertical)
-    const float width  = (orientation == EnemyOrientation::LANDSCAPE) ? 56.0f : 28.0f;
-    const float height = (orientation == EnemyOrientation::LANDSCAPE) ? 28.0f : 56.0f;
+    const SDL_FRect rect = GetBounds();
 
-    const SDL_FRect rect{
-        position.x - width * 0.5f,
-        position.y - height * 0.5f,
-        width,
-        height
-    };
-
-    // Base color by orientation (proposal: orange = portrait, green = landscape)
+    // Base colour by orientation (proposal: orange = portrait, green = landscape)
     Uint8 r = 220, g = 140, b = 40; // orange = portrait
     if (orientation == EnemyOrientation::LANDSCAPE) {
         r = 60; g = 220; b = 80; // green = landscape
@@ -77,27 +68,23 @@ void Enemy::Render(SDL_Renderer* renderer) {
     SDL_SetRenderDrawColor(renderer, r, g, b, 255);
     SDL_RenderFillRect(renderer, &rect);
 
-    // Orientation marker: small line showing "this way up"
+    // Orientation marker: a small line hinting at the axis it is aligned to.
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     const float centerX = position.x;
     const float centerY = position.y;
     if (orientation == EnemyOrientation::LANDSCAPE) {
-        // Horizontal line
-        SDL_RenderLine(renderer, centerX - 10, centerY, centerX + 10, centerY);
+        SDL_RenderLine(renderer, centerX - 10.0f, centerY, centerX + 10.0f, centerY);
     } else {
-        // Vertical line
-        SDL_RenderLine(renderer, centerX, centerY - 10, centerX, centerY + 10);
+        SDL_RenderLine(renderer, centerX, centerY - 10.0f, centerX, centerY + 10.0f);
     }
 }
 
 SDL_FRect Enemy::GetBounds() const {
-    const float width  = (orientation == EnemyOrientation::LANDSCAPE) ? 56.0f : 28.0f;
-    const float height = (orientation == EnemyOrientation::LANDSCAPE) ? 28.0f : 56.0f;
     return SDL_FRect{
-        position.x - width * 0.5f,
-        position.y - height * 0.5f,
-        width,
-        height
+        position.x - kEnemyW * 0.5f,
+        position.y - kEnemyH * 0.5f,
+        kEnemyW,
+        kEnemyH
     };
 }
 

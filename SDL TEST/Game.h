@@ -18,7 +18,8 @@ enum class GameState {
 
 // Owns the SDL window, renderer and the top-level game loop.
 // The world is rendered into an off-screen texture which is then presented
-// rotated, which is what makes the 90 degree view rotation cheap and exact.
+// scaled and rotated to fit the window, which is what makes the 90 degree
+// view rotation cheap and exact.
 class Game {
 public:
     Game() = default;
@@ -40,10 +41,12 @@ private:
 
     void DrawWorld();
     void UpdatePlaying(float deltaTime);
+    void UpdateEnemyFire(float deltaTime);
     void UpdateGameOver(float deltaTime);
 
-    void SpawnEnemy();
+    void SpawnWave();
     void HandleCollisions();
+    void DamagePlayer();
     void ResetGame();
     void RenderUI();
 
@@ -52,9 +55,10 @@ private:
     SDL_Texture* worldTexture = nullptr;
 
     InputManager input;
-    Player player{Vec2{kWorldWidth * 0.5f, kWorldHeight - kPlayerSize * 0.5f}, kPlayerSize};
+    Player player{Vec2{kWorldWidth * 0.5f, kPlayerY}, kPlayerSize};
 
     ObjectPool<Bullet> bulletPool{128};
+    ObjectPool<Bullet> enemyBulletPool{128};
     ObjectPool<Enemy> enemyPool{64};
 
     GameState state = GameState::Playing;
@@ -69,10 +73,10 @@ private:
     int score = 0;
     int lives = 3;
     int wave = 1;
-    float waveTimer = 0.0f;
-    float spawnInterval = 2.0f;
+    float waveClearTimer = 0.0f;
+    float fireCooldown = 0.0f;
     float respawnInvincibilityTimer = 0.0f;
-    static constexpr float kRespawnInvincibilityTime = 2.0f;
+    static constexpr float kRespawnInvincibilityTime = kPlayerInvuln;
     char nameBuffer[16] = {0};
     int nameLength = 0;
     bool nameEntryActive = false;

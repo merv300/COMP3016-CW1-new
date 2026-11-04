@@ -9,8 +9,8 @@ class Player final : public GameObject {
 public:
     Player(Vec2 startPosition, float size);
 
-    // Intent is supplied in world space (already rotation-corrected by Game),
-    // which keeps the player itself unaware of view rotation.
+    // Intent is supplied as world-X only (-1 = left, 1 = right, 0 = none).
+    // The view rotation is purely visual, so the player never remaps input.
     void SetMoveIntent(float worldXDir);
     void SetFiring(bool value) { firing = value; }
 

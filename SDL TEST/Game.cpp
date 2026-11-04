@@ -2,12 +2,28 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
+#include <cstdio>
 #include <random>
 #include <stdexcept>
 #include <string>
 
 namespace rtz {
+
+namespace {
+
+// Single shared generator so wave spawns and shoot timers stay random without
+// re-seeding a device on every call.
+std::mt19937& Rng() {
+    static std::mt19937 generator(std::random_device{}());
+    return generator;
+}
+
+float RandomRange(float low, float high) {
+    std::uniform_real_distribution<float> distribution(low, high);
+    return distribution(Rng());
+}
+
+} // namespace
 
 Game::~Game() {
     Shutdown();
@@ -53,11 +69,12 @@ void Game::Initialize() {
     // hundreds of frames per second and wasting the CPU.
     SDL_SetRenderVSync(renderer, 1);
 
+    // The world texture is the fixed playfield size, not the window size.
     worldTexture = SDL_CreateTexture(renderer,
                                      SDL_PIXELFORMAT_RGBA8888,
                                      SDL_TEXTUREACCESS_TARGET,
-                                     kWindowWidth,
-                                     kWindowHeight);
+                                     static_cast<int>(kWorldWidth),
+                                     static_cast<int>(kWorldHeight));
     if (worldTexture == nullptr) {
         throw std::runtime_error(std::string("World texture creation failed: ") + SDL_GetError());
     }
@@ -116,8 +133,8 @@ void Game::UpdatePlaying(float deltaTime) {
     }
 
     // Smooth rotation tween toward target angle.
-    float angleDiff = targetAngle - currentAngle;
-    float step = kRotationSpeed * deltaTime;
+    const float angleDiff = targetAngle - currentAngle;
+    const float step = kRotationSpeed * deltaTime;
     if (std::abs(angleDiff) <= step) {
         currentAngle = targetAngle;
     } else {
@@ -126,68 +143,102 @@ void Game::UpdatePlaying(float deltaTime) {
 
     // Player moves horizontally in world space only (A/D). Rotation is
     // purely visual — the world doesn't actually rotate, only the view.
-    const float moveDir = input.GetMoveAxis().x;
-    player.SetMoveIntent(moveDir);
+    player.SetMoveIntent(input.GetMoveAxis().x);
     player.SetViewAngle(currentAngle);
     player.SetFiring(input.IsFiring());
     player.Update(deltaTime);
 
-    // Lock player Y to bottom (portrait mode logic; rotation is visual only).
+    // Lock the player near the bottom edge and keep the whole ship on-screen.
     Vec2 pos = player.GetPosition();
-    pos.y = kWorldHeight - kPlayerSize * 0.5f;
-    pos.x = std::clamp(pos.x, kPlayerSize * 0.5f, kWorldWidth - kPlayerSize * 0.5f);
+    pos.y = kPlayerY;
+    const float half = kPlayerSize * 0.5f;
+    pos.x = std::clamp(pos.x, kPlayerMargin + half, kWorldWidth - kPlayerMargin - half);
     player.SetPosition(pos);
 
-    // Fire bullets (always up in world space; rotation is visual only).
-    static float fireCooldown = 0.0f;
-    const float kFireRate = 0.12f;
+    // Player fire (always up in world space; rotation is visual only).
     fireCooldown -= deltaTime;
     if (input.IsFiring() && fireCooldown <= 0.0f) {
-        fireCooldown = kFireRate;
+        fireCooldown = kFireCooldown;
         const Vec2 forward{0.0f, -1.0f};
         const Vec2 spawnPos = player.GetPosition() + forward * (kPlayerSize * 0.6f);
-        bulletPool.Acquire(spawnPos, forward, 600.0f);
+        bulletPool.Acquire(spawnPos, forward, kPlayerBulletSpeed, BulletType::Player);
     }
 
-    // Update bullets
-    bulletPool.ForEachActive([deltaTime](Bullet& b) { b.Update(deltaTime); });
+    // Update bullets.
+    bulletPool.ForEachActive([deltaTime](Bullet& bullet) { bullet.Update(deltaTime); });
 
-    // Spawn enemies
-    waveTimer += deltaTime;
-    if (waveTimer >= spawnInterval) {
-        waveTimer = 0.0f;
-        SpawnEnemy();
+    // Front-line enemies fire down at the player.
+    UpdateEnemyFire(deltaTime);
+    enemyBulletPool.ForEachActive([deltaTime](Bullet& bullet) { bullet.Update(deltaTime); });
 
-        // Increase wave every 10 spawns
-        static int spawnsThisWave = 0;
-        spawnsThisWave++;
-        if (spawnsThisWave >= 10) {
-            spawnsThisWave = 0;
-            wave++;
-            spawnInterval = std::max(0.5f, spawnInterval * 0.85f);
+    // The whole formation descends.
+    enemyPool.ForEachActive([deltaTime](Enemy& enemy) { enemy.Update(deltaTime); });
+
+    HandleCollisions();
+
+    // Once the field is clear, wait a beat and send in the next wave.
+    if (enemyPool.ActiveCount() == 0) {
+        waveClearTimer -= deltaTime;
+        if (waveClearTimer <= 0.0f) {
+            ++wave;
+            SpawnWave();
         }
     }
 
-    // Update enemies
-    enemyPool.ForEachActive([deltaTime](Enemy& e) { e.Update(deltaTime); });
-
-    // Collisions
-    HandleCollisions();
-
-    // Respawn invincibility
+    // Respawn invincibility.
     if (respawnInvincibilityTimer > 0.0f) {
         respawnInvincibilityTimer -= deltaTime;
     }
 
-    // Check game over
-    if (lives <= 0) {
+    // Check game over.
+    if (lives <= 0 && state == GameState::Playing) {
         state = GameState::GameOver;
         nameEntryActive = true;
         nameLength = 0;
+        nameBuffer[0] = '\0';
     }
 }
 
+void Game::UpdateEnemyFire(float deltaTime) {
+    enemyPool.ForEachActive([this, deltaTime](Enemy& enemy) {
+        if (!enemy.IsActive()) {
+            return;
+        }
+
+        // Only the lowest enemy in each column may fire, so the player can
+        // read the threat as a clear front line.
+        bool isFrontLine = true;
+        enemyPool.ForEachActive([&enemy, &isFrontLine](Enemy& other) {
+            if (!other.IsActive() || &other == &enemy) {
+                return;
+            }
+            const Vec2 self = enemy.GetPosition();
+            const Vec2 candidate = other.GetPosition();
+            if (std::abs(candidate.x - self.x) < kEnemyW * 0.5f &&
+                candidate.y > self.y) {
+                isFrontLine = false;
+            }
+        });
+
+        if (!isFrontLine) {
+            return;
+        }
+
+        enemy.SetShootTimer(enemy.GetShootTimer() - deltaTime);
+        if (enemy.GetShootTimer() <= 0.0f) {
+            enemy.SetShootTimer(RandomRange(kEnemyShootMin, kEnemyShootMax));
+
+            const Vec2 origin = enemy.GetPosition();
+            const Vec2 spawnPos{origin.x, origin.y + kEnemyH * 0.5f};
+            enemyBulletPool.Acquire(spawnPos, Vec2{0.0f, 1.0f},
+                                    kEnemyBulletSpeed, BulletType::Enemy);
+        }
+    });
+}
+
 void Game::UpdateGameOver(float deltaTime) {
+    (void)deltaTime;
+
     // Name entry for high score
     if (nameEntryActive) {
         for (int sc = SDL_SCANCODE_A; sc <= SDL_SCANCODE_Z; ++sc) {
@@ -214,112 +265,177 @@ void Game::UpdateGameOver(float deltaTime) {
     }
 }
 
-void Game::SpawnEnemy() {
-    // Enemies always spawn from the top edge, moving down — rotation does
-    // not affect where they enter from.
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> posDist(50.0f, 750.0f);
-    std::uniform_int_distribution<int> orientDist(0, 1);
+void Game::SpawnWave() {
+    // 6 columns x 4 rows, centred horizontally. Rows alternate orientation so
+    // the player has to flip the view to clear the whole formation.
+    const float totalWidth = kEnemyCols * kEnemyW + (kEnemyCols - 1) * kEnemyGapX;
+    const float startX = (kWorldWidth - totalWidth) * 0.5f;
 
-    Vec2 spawnPos = {posDist(gen), -30.0f};
-    Vec2 velocity = {0.0f, 80.0f + wave * 12.0f};
+    for (int row = 0; row < kEnemyRows; ++row) {
+        for (int col = 0; col < kEnemyCols; ++col) {
+            const Vec2 centre{
+                startX + col * (kEnemyW + kEnemyGapX) + kEnemyW * 0.5f,
+                kEnemyStartY + row * (kEnemyH + kEnemyGapY) + kEnemyH * 0.5f
+            };
 
-    const EnemyOrientation orientation = (orientDist(gen) == 0)
-        ? EnemyOrientation::LANDSCAPE
-        : EnemyOrientation::PORTRAIT;
+            const EnemyOrientation orientation =
+                (row % 2 == 1) ? EnemyOrientation::LANDSCAPE
+                               : EnemyOrientation::PORTRAIT;
 
-    enemyPool.Acquire(spawnPos, velocity, orientation, wave);
+            Enemy* enemy = enemyPool.Acquire(centre, orientation, wave);
+            enemy->SetShootTimer(RandomRange(kEnemyShootMin, kEnemyShootMax));
+        }
+    }
+
+    waveClearTimer = kWaveClearDelay;
 }
 
 void Game::HandleCollisions() {
-    // Bullet vs Enemy
-    bulletPool.ForEachActive([this](Bullet& bullet) {
-        if (!bullet.IsActive()) return;
+    // The game only has two view states, so the target angle maps directly
+    // onto the quarter-turn index used by Enemy::IsVulnerableAt.
+    const int quarterTurns = (targetAngle == 90.0f) ? 1 : 0;
 
-        enemyPool.ForEachActive([this, &bullet](Enemy& enemy) {
-            if (!enemy.IsActive()) return;
+    // Player bullets vs enemies (orientation-gated).
+    bulletPool.ForEachActive([this, quarterTurns](Bullet& bullet) {
+        if (!bullet.IsActive()) {
+            return;
+        }
+
+        enemyPool.ForEachActive([this, quarterTurns, &bullet](Enemy& enemy) {
+            if (!bullet.IsActive() || !enemy.IsActive()) {
+                return;
+            }
 
             const SDL_FRect b = bullet.GetBounds();
             const SDL_FRect e = enemy.GetBounds();
-
-            // AABB overlap test
             const bool overlap = !(b.x + b.w < e.x || e.x + e.w < b.x ||
                                    b.y + b.h < e.y || e.y + e.h < b.y);
 
-            if (overlap) {
-                // Only damage if current view rotation matches enemy orientation
-                const int qt = (targetAngle == 90.0f) ? 1 : 0;
-                if (enemy.IsVulnerableAt(qt)) {
-                    bullet.Deactivate();
-                    enemy.Deactivate();
-                    score += enemy.GetScoreValue();
-                    // Hit flash handled in enemy render via hitFlashTimer
-                }
-                // If not vulnerable, bullet passes through (no deactivation)
+            if (!overlap) {
+                return;
             }
+
+            if (enemy.IsVulnerableAt(quarterTurns)) {
+                bullet.Deactivate();
+                enemy.Deactivate();
+                score += enemy.GetScoreValue();
+            }
+            // Wrong orientation: the bullet passes straight through.
         });
     });
 
-    // Enemy vs Player (if not invincible)
+    // Enemy bullets vs player.
+    if (respawnInvincibilityTimer <= 0.0f) {
+        const SDL_FRect p = player.GetBounds();
+        enemyBulletPool.ForEachActive([this, &p](Bullet& bullet) {
+            if (!bullet.IsActive()) {
+                return;
+            }
+
+            const SDL_FRect b = bullet.GetBounds();
+            const bool overlap = !(p.x + p.w < b.x || b.x + b.w < p.x ||
+                                   p.y + p.h < b.y || b.y + b.h < p.y);
+            if (!overlap) {
+                return;
+            }
+
+            bullet.Deactivate();
+            DamagePlayer();
+        });
+    }
+
+    // Enemy vs player contact.
     if (respawnInvincibilityTimer <= 0.0f) {
         const SDL_FRect p = player.GetBounds();
         enemyPool.ForEachActive([this, &p](Enemy& enemy) {
-            if (!enemy.IsActive()) return;
+            if (!enemy.IsActive()) {
+                return;
+            }
 
             const SDL_FRect e = enemy.GetBounds();
             const bool overlap = !(p.x + p.w < e.x || e.x + e.w < p.x ||
                                    p.y + p.h < e.y || e.y + e.h < p.y);
-
-            if (overlap) {
-                enemy.Deactivate();
-                lives--;
-                respawnInvincibilityTimer = kRespawnInvincibilityTime;
-                player.SetMoveIntent(0.0f);
-                player.SetPosition({kWorldWidth * 0.5f, kWorldHeight - kPlayerSize * 0.5f});
+            if (!overlap) {
+                return;
             }
+
+            enemy.Deactivate();
+            DamagePlayer();
         });
     }
+}
+
+void Game::DamagePlayer() {
+    if (respawnInvincibilityTimer > 0.0f) {
+        return;
+    }
+
+    --lives;
+    respawnInvincibilityTimer = kRespawnInvincibilityTime;
+    player.SetMoveIntent(0.0f);
+    player.SetPosition({kWorldWidth * 0.5f, kPlayerY});
 }
 
 void Game::ResetGame() {
     score = 0;
     lives = 3;
     wave = 1;
-    waveTimer = 0.0f;
-    spawnInterval = 2.0f;
+    waveClearTimer = kWaveClearDelay;
+    fireCooldown = 0.0f;
     respawnInvincibilityTimer = 0.0f;
     currentAngle = 0.0f;
     targetAngle = 0.0f;
     state = GameState::Playing;
+    nameEntryActive = false;
+    nameLength = 0;
+    nameBuffer[0] = '\0';
 
     bulletPool.ReleaseAll();
+    enemyBulletPool.ReleaseAll();
     enemyPool.ReleaseAll();
 
-    player.SetPosition({kWorldWidth * 0.5f, kWorldHeight - kPlayerSize * 0.5f});
+    player.SetPosition({kWorldWidth * 0.5f, kPlayerY});
     player.SetMoveIntent(0.0f);
     player.SetFiring(false);
     player.SetViewAngle(0.0f);
+
+    SpawnWave();
 }
 
 void Game::Render() {
+    // 1. Draw the world into the fixed-size off-screen texture.
     SDL_SetRenderTarget(renderer, worldTexture);
     DrawWorld();
     SDL_SetRenderTarget(renderer, nullptr);
 
+    // 2. Present that texture scaled to fit the window and rotated about its
+    //    centre. The AABB of the rotated world determines the scale, so the
+    //    whole playfield always stays visible at either orientation.
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    const SDL_FRect destination{0.0f, 0.0f,
-                                static_cast<float>(kWindowWidth),
-                                static_cast<float>(kWindowHeight)};
-    const SDL_FPoint center{static_cast<float>(kWindowWidth) * 0.5f,
-                            static_cast<float>(kWindowHeight) * 0.5f};
-    const double angle = currentAngle;
+    const float radians = currentAngle * 3.14159265f / 180.0f;
+    const float cosine = std::abs(std::cos(radians));
+    const float sine = std::abs(std::sin(radians));
 
-    SDL_RenderTextureRotated(renderer, worldTexture, nullptr, &destination, angle, &center, SDL_FLIP_NONE);
+    const float aabbWidth = kWorldWidth * cosine + kWorldHeight * sine;
+    const float aabbHeight = kWorldWidth * sine + kWorldHeight * cosine;
+    const float scale = std::min(static_cast<float>(kWindowWidth) / aabbWidth,
+                                 static_cast<float>(kWindowHeight) / aabbHeight);
 
-    // UI overlay (rendered after rotation so it stays screen-aligned)
+    const float drawWidth = kWorldWidth * scale;
+    const float drawHeight = kWorldHeight * scale;
+    const SDL_FRect destination{
+        (static_cast<float>(kWindowWidth) - drawWidth) * 0.5f,
+        (static_cast<float>(kWindowHeight) - drawHeight) * 0.5f,
+        drawWidth,
+        drawHeight
+    };
+
+    SDL_RenderTextureRotated(renderer, worldTexture, nullptr, &destination,
+                             currentAngle, nullptr, SDL_FLIP_NONE);
+
+    // 3. UI overlay (rendered after rotation so it stays screen-aligned).
     RenderUI();
 
     SDL_RenderPresent(renderer);
@@ -331,28 +447,28 @@ void Game::DrawWorld() {
 
     // Reference grid so the current rotation is readable at a glance.
     SDL_SetRenderDrawColor(renderer, 28, 34, 58, 255);
-    for (int x = 0; x <= kWindowWidth; x += 100) {
-        SDL_RenderLine(renderer, static_cast<float>(x), 0.0f,
-                       static_cast<float>(x), kWorldHeight);
+    for (float x = 0.0f; x <= kWorldWidth; x += 60.0f) {
+        SDL_RenderLine(renderer, x, 0.0f, x, kWorldHeight);
     }
-    for (int y = 0; y <= kWindowHeight; y += 100) {
-        SDL_RenderLine(renderer, 0.0f, static_cast<float>(y),
-                       kWorldWidth, static_cast<float>(y));
+    for (float y = 0.0f; y <= kWorldHeight; y += 60.0f) {
+        SDL_RenderLine(renderer, 0.0f, y, kWorldWidth, y);
     }
 
     // Marker pinned to the world's top-left corner.
     SDL_SetRenderDrawColor(renderer, 220, 70, 90, 255);
-    const SDL_FRect marker{20.0f, 20.0f, 60.0f, 60.0f};
+    const SDL_FRect marker{20.0f, 20.0f, 40.0f, 40.0f};
     SDL_RenderFillRect(renderer, &marker);
 
     // Bullets
-    bulletPool.ForEachActive([this](Bullet& b) { b.Render(renderer); });
+    bulletPool.ForEachActive([this](Bullet& bullet) { bullet.Render(renderer); });
+    enemyBulletPool.ForEachActive([this](Bullet& bullet) { bullet.Render(renderer); });
 
     // Enemies
-    enemyPool.ForEachActive([this](Enemy& e) { e.Render(renderer); });
+    enemyPool.ForEachActive([this](Enemy& enemy) { enemy.Render(renderer); });
 
-    // Player (render last so on top)
-    if (respawnInvincibilityTimer <= 0.0f || static_cast<int>(respawnInvincibilityTimer * 10) % 2 == 0) {
+    // Player (render last so it sits on top)
+    if (respawnInvincibilityTimer <= 0.0f ||
+        static_cast<int>(respawnInvincibilityTimer * 10) % 2 == 0) {
         player.Render(renderer);
     }
 }
@@ -378,26 +494,27 @@ void Game::RenderUI() {
 
     // Wave
     snprintf(buf, sizeof(buf), "WAVE: %d", wave);
-    // Draw wave indicator
     SDL_FRect waveBar{600.0f, 10.0f, static_cast<float>(wave * 30), 16.0f};
     SDL_SetRenderDrawColor(renderer, 200, 160, 80, 255);
     SDL_RenderFillRect(renderer, &waveBar);
-
-    // Rotation indicator
-    const char* rotNames[4] = {"0°", "90°", "180°", "270°"};
-    // TODO: draw rotation indicator
 
     // Game Over screen
     if (state == GameState::GameOver) {
         // Semi-transparent overlay
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
-        SDL_FRect overlay{0, 0, 800.0f, 800.0f};
+        SDL_FRect overlay{0.0f, 0.0f,
+                          static_cast<float>(kWindowWidth),
+                          static_cast<float>(kWindowHeight)};
         SDL_RenderFillRect(renderer, &overlay);
 
-        // Game Over box
+        // Game Over box, centred in the window
+        const float boxW = 400.0f;
+        const float boxH = 300.0f;
+        const SDL_FRect box{(static_cast<float>(kWindowWidth) - boxW) * 0.5f,
+                            (static_cast<float>(kWindowHeight) - boxH) * 0.5f,
+                            boxW, boxH};
         SDL_SetRenderDrawColor(renderer, 40, 40, 60, 255);
-        SDL_FRect box{200.0f, 250.0f, 400.0f, 300.0f};
         SDL_RenderFillRect(renderer, &box);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderRect(renderer, &box);
@@ -405,7 +522,7 @@ void Game::RenderUI() {
         if (nameEntryActive) {
             // Name entry
             SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-            SDL_FRect nameBox{250.0f, 350.0f, 300.0f, 40.0f};
+            SDL_FRect nameBox{box.x + 50.0f, box.y + 100.0f, 300.0f, 40.0f};
             SDL_RenderRect(renderer, &nameBox);
             // Cursor blink
             if (static_cast<int>(SDL_GetTicks() / 500) % 2 == 0) {

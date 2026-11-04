@@ -1,6 +1,7 @@
 #include "Player.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "Constants.h"
 
@@ -18,8 +19,9 @@ void Player::Update(float deltaTime) {
     // Movement is horizontal-only in world space; Y is locked by Game.
     position.x += moveIntentX * (speed * deltaTime);
 
+    // Keep the whole ship inside the visible playable band.
     const float half = size * 0.5f;
-    position.x = std::clamp(position.x, half, kWorldWidth - half);
+    position.x = std::clamp(position.x, kPlayerMargin + half, kWorldWidth - kPlayerMargin - half);
 }
 
 void Player::Render(SDL_Renderer* renderer) {

@@ -6,21 +6,20 @@
 namespace rtz {
 
 // Which view rotation makes this enemy vulnerable.
-// 0° (0) and 180° (2) are LANDSCAPE (wide).
-// 90° (1) and 270° (3) are PORTRAIT (tall).
+// The game only supports two view states, but the enum keeps the intent
+// explicit and lets the vulnerability test accept a quarter-turn index.
 enum class EnemyOrientation {
-    LANDSCAPE = 0, // vulnerable at 0° and 180°
-    PORTRAIT  = 1  // vulnerable at 90° and 270°
+    LANDSCAPE = 0, // green, vulnerable when the view is at 90°
+    PORTRAIT  = 1  // orange, vulnerable when the view is at 0°
 };
 
 class Enemy final : public GameObject {
 public:
     // Activate arguments:
-    // startPos - world position (spawned at edge)
-    // velocity - world-space velocity (pixels/sec)
-    // orientation - which rotation kills it
-    // wave - current wave number (scales health/speed)
-    void Activate(const Vec2& startPos, const Vec2& velocity, EnemyOrientation orientation, int wave);
+    // startPos    - world-space centre of the enemy
+    // orientation - which view rotation kills it (also drives its colour)
+    // wave        - current wave number (scales score)
+    void Activate(const Vec2& startPos, EnemyOrientation orientation, int wave);
 
     void Deactivate() override;
 
@@ -33,11 +32,19 @@ public:
 
     int GetScoreValue() const { return scoreValue; }
 
+    Vec2 GetPosition() const { return position; }
+    void SetPosition(const Vec2& pos) { position = pos; }
+
+    // Front-line shooting timer. Game ticks it and spawns the bullet.
+    float GetShootTimer() const { return shootTimer; }
+    void SetShootTimer(float value) { shootTimer = value; }
+
 private:
     Vec2 position;
-    Vec2 velocity;
     EnemyOrientation orientation = EnemyOrientation::LANDSCAPE;
     float hitFlashTimer = 0.0f;
+    float shootTimer = 0.0f;
+    float descendSpeed = 0.0f;
     int scoreValue = 100;
     int wave = 1;
     static constexpr float kHitFlashDuration = 0.1f;

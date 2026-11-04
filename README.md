@@ -13,7 +13,7 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 |--------|---------|
 | **Genre** | Arcade / Twin-stick shooter / Endless survival |
 | **Core Loop** | Move → Shoot → Rotate view (Q) to match enemy orientation → Score → Survive |
-| **Unique Mechanic** | Enemies are **portrait-only** or **landscape-only** killable. Press **Q** to rotate the entire world 90° and remap input accordingly. |
+| **Unique Mechanic** | Enemies are **portrait-only** or **landscape-only** killable. Press **Q** to rotate the view 90° so the matching enemies become vulnerable. |
 | **Controls** | See [Controls](#controls) |
 
 ---
@@ -22,15 +22,14 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 
 | Input | Action |
 |-------|--------|
-| **A / D** or **← / →** | Strafe left / right |
-| **A / D** or **← / →** | Strafe side-to-side along world X (locked to bottom at 0°, left at 90°) |
+| **A / D** or **← / →** | Strafe side-to-side along world X (always horizontal; the view rotation is visual) |
 | **W / S** or **↑ / ↓** | *(not used — axis-locked side movement only)* |
 | **Left Click** / **Space** | Fire |
 | **Right Click** / **Shift** | Bomb / Special (planned) |
 | **Q** | Toggle view 0° ↔ 90° CW (smooth tween) |
-| **Esc** | Pause / back |
+| **Esc** | Quit / back |
 
-> Input vectors are automatically remapped when the view rotates so "up" always means "toward the top of the rotated screen".
+> The world is a fixed 480×800 playfield rendered off-screen, then scaled to fit the 1280×720 window and rotated about its centre. Input is never remapped: A/D always moves along world X.
 
 ---
 
@@ -42,9 +41,11 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 |--------|--------|-------|
 | Player movement | Vec2 with `WorldFromScreen` remapping | Float X only, no remapping |
 | Rotation | Instant snap via `quarterTurns` int | Smooth tween via `currentAngle`/`targetAngle` |
-| Player Y | Axis-locked (bottom at 0°, left at 90°) | Always locked to bottom |
+| Player Y | Axis-locked (bottom at 0°, left at 90°) | Always locked near the bottom edge |
 | Bullet direction | Rotated with view | Always world UP (negative Y) |
-| Enemy spawn | Top (0°) / right (90°) | Same |
+| Enemy spawn | Random top-edge spawns | 6×4 grid waves, rows alternate orientation |
+| Enemy fire | None | Front-line enemies shoot down at the player |
+| World / window | World matched the 1280×720 window | 480×800 world scaled and centred inside the window |
 | Vulnerability | Backwards (fixed) | LANDSCAPE at 90°, PORTRAIT at 0° |
 
 

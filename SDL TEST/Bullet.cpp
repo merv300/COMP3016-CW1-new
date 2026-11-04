@@ -1,11 +1,14 @@
 #include "Bullet.h"
 
+#include "Constants.h"
+
 namespace rtz {
 
-void Bullet::Activate(const Vec2& startPos, const Vec2& direction, float speed) {
+void Bullet::Activate(const Vec2& startPos, const Vec2& direction, float speed, BulletType bulletType) {
     GameObject::Activate();
     position = startPos;
     velocity = direction * speed;
+    type = bulletType;
     life = 0.0f;
 }
 
@@ -19,8 +22,8 @@ void Bullet::Update(float deltaTime) {
 
     // Despawn after max lifetime or if leaving world bounds (with margin).
     if (life >= kMaxLife ||
-        position.x < -kRadius || position.x > 800.0f + kRadius ||
-        position.y < -kRadius || position.y > 800.0f + kRadius) {
+        position.x < -kRadius || position.x > kWorldWidth + kRadius ||
+        position.y < -kRadius || position.y > kWorldHeight + kRadius) {
         Deactivate();
     }
 }
@@ -32,7 +35,12 @@ void Bullet::Render(SDL_Renderer* renderer) {
         kRadius * 2.0f,
         kRadius * 2.0f
     };
-    SDL_SetRenderDrawColor(renderer, 255, 230, 80, 255);
+
+    if (type == BulletType::Player) {
+        SDL_SetRenderDrawColor(renderer, 255, 230, 80, 255);   // yellow
+    } else {
+        SDL_SetRenderDrawColor(renderer, 255, 80, 80, 255);    // red
+    }
     SDL_RenderFillRect(renderer, &rect);
 }
 
