@@ -40,6 +40,10 @@ inline constexpr float kEnemyBulletSpeed = 240.0f;
 inline constexpr float kExplosionRadius = 80.0f;
 inline constexpr float kExplosionDuration = 0.4f;
 
+// --- Stars ---
+inline constexpr int kStarCount = 160;
+inline constexpr int kStarLayers = 3;
+
 // --- Enemy grid ---
 inline constexpr int kEnemyCols = 6;
 inline constexpr int kEnemyRows = 4;

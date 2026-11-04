@@ -9,6 +9,7 @@
 #include "Enemy.h"
 #include "Bomb.h"
 #include "Explosion.h"
+#include "Star.h"
 #include "ObjectPool.h"
 
 namespace rtz {
@@ -66,6 +67,7 @@ private:
     ObjectPool<Enemy> enemyPool{64};
     ObjectPool<Bomb> bombPool{32};
     ObjectPool<Explosion> explosionPool{16};
+    ObjectPool<Star> starPool{kStarCount};
 
     GameState state = GameState::Playing;
 

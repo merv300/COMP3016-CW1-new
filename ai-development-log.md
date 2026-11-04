@@ -32,8 +32,8 @@
 **World and rendering**
 > "Separate the world size from the window size: render a 480×800 world to an off-screen texture, then scale and centre it inside a 1280×720 window using the rotated AABB so the whole playfield stays visible."
 
-**Collision and orientation gating**
-> "Enemy bullets should only damage the player, player bullets should only kill enemies when the current view orientation matches the enemy's colour, and enemy contact should cost a life with a short respawn invincibility."
+**Starfield**
+> "Add a parallax starfield background with 160 stars in 3 layers that drift downward and wrap around the world, matching the folk.cpp prototype."
 
 ---
 

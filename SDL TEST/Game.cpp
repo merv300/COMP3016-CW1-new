@@ -200,6 +200,9 @@ void Game::UpdatePlaying(float deltaTime) {
     UpdateBombs();
     explosionPool.ForEachActive([deltaTime](Explosion& explosion) { explosion.Update(deltaTime); });
 
+    // Stars drift downward and wrap around.
+    starPool.ForEachActive([deltaTime](Star& star) { star.Update(deltaTime); });
+
     HandleCollisions();
 
     // Once the field is clear, wait a beat and send in the next wave.
@@ -483,6 +486,18 @@ void Game::ResetGame() {
     player.SetFiring(false);
     player.SetViewAngle(0.0f);
 
+    // Initialise the starfield background.
+    starPool.ReleaseAll();
+    for (int i = 0; i < kStarCount; ++i) {
+        const int layer = std::rand() % kStarLayers;
+        const float size = 1.0f + layer * 0.8f;
+        const float x = static_cast<float>(std::rand() % static_cast<int>(kWorldWidth));
+        const float y = static_cast<float>(std::rand() % static_cast<int>(kWorldHeight));
+        const float speed = 15.0f + layer * 40.0f;
+        const Uint8 alpha = static_cast<Uint8>(90 + layer * 65);
+        starPool.Acquire(x, y, size, speed, alpha);
+    }
+
     SpawnWave();
 }
 
@@ -534,6 +549,9 @@ void Game::Render() {
 void Game::DrawWorld() {
     SDL_SetRenderDrawColor(renderer, 10, 12, 24, 255);
     SDL_RenderClear(renderer);
+
+    // Starfield background
+    starPool.ForEachActive([this](Star& star) { star.Render(renderer); });
 
     // Reference grid so the current rotation is readable at a glance.
     SDL_SetRenderDrawColor(renderer, 28, 34, 58, 255);
