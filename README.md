@@ -96,9 +96,7 @@ The project file (`ROTATORZ/ROTATORZ.vcxproj`) references the SDL packages by ab
 path, for both **Debug|x64** and **Release|x64**:
 
 ```
-C:\schoolwork\Computer Science\COMP3016\SDL\SDL3\
-C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_image\SDL3_image-3.4.8\
-C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_mixer\SDL3_mixer-3.2.4\
+
 ```
 
 If your SDKs live somewhere else, edit the `AdditionalIncludeDirectories`,
@@ -258,21 +256,12 @@ See **[`ai-development-log.md`](./ai-development-log.md)** for transparency.
 | **State Machine** | Menu / Playing / GameOver / Leaderboard | ✅ **Done** |
 | **Persistence** | Top-10 high scores saved to `scores.dat` | ✅ **Done** |
 | **Polish** | Starfield, explosions, hit flash, SDL3_mixer music & SFX, menus | ✅ **Done** |
-| **Playtesting** | Tester sessions, balancing, evidence in `playtesting/` | 🔲 **Not started** |
 | **Finalisation** | Report write-up, submission zip (`dist/ROTATORZ.zip`), GitHub polish | 🟡 **In progress** |
-| **Demo video** | Record and link a ≤10 min walkthrough | 🔲 **Not started** |
 
 ---
 
 ## 📺 Demo Video
 
 - **YouTube (unlisted, 1080p, ≤10 min)**: *[link to be added]*
-- **DLE submission**: *[filename to be added]*
-
----
-
-## 📦 Submission Checklist
-
-All 15+ items from the brief covered (repo, video, proposal, gameplay, dependencies, AI log, patterns, mechanics, UML, screenshots, test cases, playtesting, evaluation, compilable source, standalone exe + assets zip ≤150 MB, AI declaration).
 
 ---
