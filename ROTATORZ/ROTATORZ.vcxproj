@@ -158,6 +158,7 @@
     <ClCompile Include="Bomb.cpp" />
     <ClCompile Include="Explosion.cpp" />
     <ClCompile Include="Star.cpp" />
+    <ClCompile Include="Planet.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Constants.h" />
@@ -171,6 +172,7 @@
     <ClInclude Include="Bomb.h" />
     <ClInclude Include="Explosion.h" />
     <ClInclude Include="Star.h" />
+    <ClInclude Include="Planet.h" />
     <ClInclude Include="ObjectPool.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -25,9 +25,9 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 | **A / D** or **← / →** | Strafe side-to-side along world X (always horizontal; the view rotation is visual) |
 | **W / S** or **↑ / ↓** | *(not used — axis-locked side movement only)* |
 | **Left Click** / **Space** | Fire |
-| **Right Click** | Bomb — detonates on contact and kills all enemies in its blast radius (5 s cooldown) |
+| **Right Click** / **E** | Bomb — detonates on contact and kills all enemies in its blast radius (5 s cooldown) |
 | **Q** | Toggle view 0° ↔ 90° CW (smooth tween) |
-| **F11** | Toggle fullscreen (desktop resolution) |
+| **F11** | Toggle fullscreen (desktop resolution) — also shown on the title screen |
 | **Esc** | Quit / back |
 
 ### Scoring
@@ -35,7 +35,7 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 - Score scales with the wave number (100 × wave per kill)
 - Bomb kills award a flat score per enemy
 - High scores are saved to `scores.dat` (top 10, name + score)
-- Game Over menu: choose **Retry** (restart immediately) or **Enter Name** (save score to leaderboard). Typed characters render in the entry field with a blinking cursor
+- Game Over menu: choose **Retry** (restart immediately) or **Enter Name** (save score to leaderboard). Selection uses **Enter only**. Typed characters render in the entry field with a blinking cursor
 - Leaderboard displays top 10 scores. Press Space on the leaderboard to return to the menu
 
 > The world is a fixed 480×800 playfield rendered off-screen, then scaled to fit the 1280×720 window and rotated about its centre. Input is never remapped: A/D always moves along world X.
@@ -66,7 +66,10 @@ ROTATORZ/
     ├── music.ogg
     ├── shoot.wav
     ├── enemy_shoot.wav
-    └── hit_wrong.wav
+    ├── hit_wrong.wav
+    ├── planet1.png
+    ├── planet2.png
+    └── planet3.png
 ```
 
 Extract the zip and double-click `ROTATORZ.exe`. Keep the `.dll` files and the `assets/`
@@ -157,7 +160,7 @@ the same DLLs and `assets\` folder.
 | Enemy spawn | Random top-edge spawns | 6×4 grid waves, rows alternate orientation |
 | Enemy fire | None | Front-line enemies shoot down at the player |
 | Bullet collision | Passed through wrong-coloured enemies | Consumed on any enemy contact; only matching orientation destroys |
-| Bomb | Planned only | Right-click bomb with 5 s cooldown and orientation-ignoring AoE |
+| Bomb | Planned only | Right-click or E bomb with 5 s cooldown and orientation-ignoring AoE |
 | High scores | None | Top-10 table saved to scores.dat; name entry at Game Over; leaderboard state |
 | World / window | World matched the 1280×720 window | 480×800 world scaled and centred inside the window |
 | Vulnerability | Backwards (fixed) | LANDSCAPE at 90°, PORTRAIT at 0° |
@@ -215,7 +218,10 @@ x64/Release/
     ├── music.ogg
     ├── shoot.wav
     ├── enemy_shoot.wav
-    └── hit_wrong.wav
+    ├── hit_wrong.wav
+    ├── planet1.png
+    ├── planet2.png
+    └── planet3.png
 ```
 
 ---

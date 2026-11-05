@@ -19,6 +19,7 @@ struct MIX_Track;
 #include "Bomb.h"
 #include "Explosion.h"
 #include "Star.h"
+#include "Planet.h"
 #include "ObjectPool.h"
 
 namespace rtz {
@@ -113,6 +114,7 @@ private:
     ObjectPool<Bomb> bombPool{32};
     ObjectPool<Explosion> explosionPool{16};
     ObjectPool<Star> starPool{kStarCount};
+    ObjectPool<Planet> planetPool{kPlanetCount};
 
     GameState state = GameState::Menu;
 

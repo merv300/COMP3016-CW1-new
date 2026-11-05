@@ -271,6 +271,9 @@ void Game::LoadAssets() {
     // Sprites — falls back to coloured rectangles if files are missing.
     Player::LoadTexture(renderer, kAssetPlayerSprite);
     Enemy::LoadTextures(renderer, kAssetEnemyPortrait, kAssetEnemyLandscape);
+    Planet::LoadTexture(renderer, 0, kAssetPlanet1);
+    Planet::LoadTexture(renderer, 1, kAssetPlanet2);
+    Planet::LoadTexture(renderer, 2, kAssetPlanet3);
 
 #ifdef RTZ_USE_SDL3_MIXER
     if (mixer == nullptr) {
@@ -353,6 +356,7 @@ void Game::UnloadAssets() {
 #endif
     Player::UnloadTexture();
     Enemy::UnloadTextures();
+    Planet::UnloadAllTextures();
 }
 
 void Game::PollEvents() {
@@ -445,8 +449,9 @@ void Game::UpdatePlaying(float deltaTime) {
         bombCooldown += deltaTime;
     }
 
-    // Bomb fire: right-click while the cooldown is fully charged.
-    if (input.IsRightMouseDown() && bombCooldown >= kBombCooldownTime) {
+    // Bomb fire: right-click or E while the cooldown is fully charged.
+    if ((input.IsRightMouseDown() || input.WasKeyPressed(SDL_SCANCODE_E)) &&
+        bombCooldown >= kBombCooldownTime) {
         bombCooldown = 0.0f;
         const Vec2 spawnPos = player.GetPosition() +
                               Vec2{0.0f, -kPlayerSize * 0.5f - kBombSize * 0.5f};
@@ -470,6 +475,11 @@ void Game::UpdatePlaying(float deltaTime) {
 
     // Stars drift downward and wrap around.
     starPool.ForEachActive([deltaTime](Star& star) { star.Update(deltaTime); });
+
+    // Planets drift downward more slowly than the stars.
+    planetPool.ForEachActive([deltaTime](Planet& planet) {
+        planet.Update(deltaTime);
+    });
 
     HandleCollisions();
 
@@ -636,9 +646,8 @@ void Game::UpdateGameOver(float deltaTime) {
             : GameOverMenu::Retry;
     }
 
-    // Select the highlighted option.
-    if (input.WasKeyPressed(SDL_SCANCODE_SPACE) ||
-        input.WasKeyPressed(SDL_SCANCODE_RETURN) ||
+    // Select the highlighted option — Enter key only on the death screen.
+    if (input.WasKeyPressed(SDL_SCANCODE_RETURN) ||
         input.WasKeyPressed(SDL_SCANCODE_KP_ENTER)) {
         if (gameOverMenu == GameOverMenu::Retry) {
             ResetGame();
@@ -959,6 +968,17 @@ void Game::ResetGame() {
         starPool.Acquire(x, y, size, speed, alpha);
     }
 
+    // Initialise the scrolling planet background layer (behind the stars).
+    planetPool.ReleaseAll();
+    for (int i = 0; i < kPlanetCount; ++i) {
+        const float size = 30.0f + static_cast<float>(std::rand() % 50);
+        const float x = static_cast<float>(std::rand() % static_cast<int>(kWorldWidth));
+        const float y = static_cast<float>(std::rand() % static_cast<int>(kWorldHeight));
+        const float speed = 8.0f + static_cast<float>(std::rand() % 12);
+        const Uint8 alpha = static_cast<Uint8>(150 + std::rand() % 100);
+        planetPool.Acquire(x, y, size, speed, alpha);
+    }
+
     SpawnWave();
 }
 
@@ -1016,6 +1036,7 @@ void Game::DrawWorld() {
     SDL_RenderClear(renderer);
 
     // Starfield background
+    planetPool.ForEachActive([this](Planet& planet) { planet.Render(renderer); });
     starPool.ForEachActive([this](Star& star) { star.Render(renderer); });
 
     // Reference grid so the current rotation is readable at a glance.
@@ -1361,6 +1382,11 @@ void Game::RenderMenu(int windowWidth, int windowHeight) {
 
         optionY += optionGap;
     }
+
+    // Fullscreen hint
+    SDL_SetRenderDrawColor(renderer, 150, 150, 150, 180);
+    DrawText(renderer, static_cast<int>(box.x + 40.0f),
+             static_cast<int>(box.y + optionY + 12.0f), "F11: TOGGLE FULLSCREEN", 2);
 
     // Hint at bottom
     SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);

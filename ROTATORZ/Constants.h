@@ -24,7 +24,7 @@ inline constexpr float kPlayerSize = 36.0f;
 inline constexpr float kPlayerMargin = 15.0f;
 inline constexpr float kPlayerY = kWorldHeight - 60.0f;
 inline constexpr float kPlayerInvuln = 1.5f;
-inline constexpr float kFireCooldown = 0.22f;
+inline constexpr float kFireCooldown = 0.28f;
 
 // Enemy shots fire far more often than player shots, so the enemy sound plays
 // quieter than the rest of the mix. 1.0 is full volume.
@@ -56,6 +56,9 @@ inline constexpr float kExplosionDuration = 0.4f;
 inline constexpr int kStarCount = 160;
 inline constexpr int kStarLayers = 3;
 
+// --- Planets ---
+inline constexpr int kPlanetCount = 2;
+
 // --- Enemy grid ---
 inline constexpr int kEnemyCols = 6;
 inline constexpr int kEnemyRows = 4;
@@ -83,5 +86,8 @@ inline constexpr const char* kAssetMusic = "assets/music.ogg";
 inline constexpr const char* kAssetShootSfx = "assets/shoot.wav";
 inline constexpr const char* kAssetEnemyShootSfx = "assets/enemy_shoot.wav";
 inline constexpr const char* kAssetWrongHitSfx = "assets/hit_wrong.wav"; // shot hit an enemy aligned to the other axis
+inline constexpr const char* kAssetPlanet1 = "assets/planet1.png"; // background scrolling planet
+inline constexpr const char* kAssetPlanet2 = "assets/planet2.png"; // background scrolling planet
+inline constexpr const char* kAssetPlanet3 = "assets/planet3.png"; // background scrolling planet
 
 } // namespace rtz

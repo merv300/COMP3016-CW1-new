@@ -221,6 +221,30 @@ For each AI-generated output:
   along with the corresponding `Game` calls. Orientation is still readable from the
   sprite art itself; the background reference grid is unchanged.
 
+### Input & UI Changes
+- **Death screen selection is Enter-only:** `Game::UpdateGameOver` now selects the
+  highlighted Retry/Enter Name option only on `SDL_SCANCODE_RETURN` / `KP_ENTER`.
+  `SDL_SCANCODE_SPACE` no longer confirms a death-screen choice, so Space is reserved
+  for in-game firing and cannot accidentally advance the menu.
+- **Bomb alternate key E:** `Game::UpdatePlaying` now fires the bomb on right-click
+  **or** `SDL_SCANCODE_E`, while the cooldown is fully charged. `WasKeyPressed` is used
+  for E so holding the key does not retrigger the bomb every frame.
+- **Title screen fullscreen hint:** `Game::RenderMenu` draws a small `F11: TOGGLE FULLSCREEN`
+  line at scale 1 below the menu options inside the title box, so players discover the
+  fullscreen toggle without reading the README.
+
+### Background Layer Changes
+- **Slower gun fire rate:** `kFireCooldown` increased from `0.22f` to `0.28f` so the
+  player shoots a little less often.
+- **Scrolling planets:** added a `Planet` class and a `planetPool` (`kPlanetCount = 2`)
+  that drifts downward behind the starfield. Planets load up to three sprites
+  (`assets/planet1.png`, `assets/planet2.png`, `assets/planet3.png`) via SDL3_image
+  and fall back to a coloured circle when no sprite is loaded. Each planet is randomly
+  assigned one of the loaded sprites at spawn. They render before the stars in
+  `DrawWorld` only (not on the menu), so they sit at the very back of the in-game
+  background. Two planets are spawned at random positions/speeds/sizes in `ResetGame`
+  and wrap around the world like the stars.
+
 ### Build and Submission Packaging
 - README now documents two paths: running the prebuilt package and building from source
   (prerequisites, SDL package locations, per-config steps, runtime DLL list, common
