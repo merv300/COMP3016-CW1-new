@@ -35,13 +35,79 @@
 
 ---
 
-### Deviations from Initial Proposal
+**Initial Proposal** 
+ROTATORZ (CW1 Proposal)
+Space invaders shooter-like game, you’re piloting a gunship in space, and you kill enemies using
+projectile bullets and can kill them in either 1 or 2 shots, ideally not too difficult. The primary
+mechanic will be the rotation of the actual game screen itself to kill enemies that can’t be killed
+until the screen is rotated. Essentially, the closest wave of enemies at a given time would be
+killed in a vertical screen rotation, but then a different coloured enemy could be on the back line
+and can only be killed from when the screen is rotated and when the player is shooting left to
+right.
+Gameplay Loop
+There is one infinite level; the goal is to survive as long as possible since you have 3 lives and
+you have one HP. The player would have to manage all types of enemies and can rotate the
+screen at any time. A timer and a score meter should be at the top of the screen. The longer you
+survive the higher the score will be. Aim to get the highest score and could be a leaderboard
+system which records against some predefined scores/your own personal best score.
 
-| Proposed | Delivered | Justification |
-|----------|-----------|---------------|
-| Fixed timestep game loop with accumulator | Delta-time loop with 50 ms clamp | Compressed 4-day schedule; fixed timestep adds ~40 lines + interpolation complexity with no benefit for an arcade shooter. Clamping prevents tunnelling after stalls. |
-| [Feature] | [Status] | [Reason] |
-| *Fill in as development progresses* | | |
+There should be an item that’s on cooldown that can kill both landscape/portrait specific
+enemies. Universal bomb item will spawn between the enemies in the row. Can be shot and
+then recharges the item. Could be a bomb the player shoots and explodes (between the
+enemies in the row) or a missile shot from the player character. There will be an animated
+background in space with some stars and passing planets to have there be some visual
+feedback. Enemy AI shouldn’t overwhelm the player too much and the bullets/projectiles
+should be manageable. The colour of the enemies should indicate that they are
+landscape/portrait killable enemies.
+Vertical orientation ex. Horizontal orientation ex.
+A and D should be used for movement keys, will work as left/right then change to up/down upon
+orientation change. Left click for the normal gun pellets, right click for potential bomb item. Q
+key should be the screen orientation change key.
+
+White player character on black space backdrop. Orange can be portrait killable enemies; green
+enemies can be killed in landscape. The screen will rotate 90 degrees clockwise, then rotate
+back counterclockwise to the other orientation. The movement should stay the same from going
+along the x-axis to the y-axis for movement, the movement won’t factor in forward and
+backward movement. The user interface would need to be rotated alongside everything else and
+this rotation would take place inside a regular 16:9 game window. Essentially a portrait->
+landscape rotation. I’d ideally need to change components between the x and the y axis but
+need to figure out how to calculate the positions as the orientation changes.
+There will be a starting screen which you can start the game from with a little explanation as to
+how the game mechanics will work. There will be a leaderboard to track the scores and a button
+to return to the menu screen from here. You should also be able to exit the game from here.
+There should be sufficient sound effects for the bullets and the enemies being killed; alongside
+some game music that is able to be looped while the player continues a run. The visuals should
+provide enough information to the player as to if they’ve killed an enemy and for when they’ve
+been killed (game over screen).
+The player and enemies have a given amount of health. The player character will be killed after
+being hit with one bullet but will have 3 lives total. The player will respawn in the same position
+and will retain the current time and score. Once the lives have depleted, it’ll be game over and
+the score will be recorded on the leaderboard if it’s a high score.
+Gameplay screen mock-up
+AI Usage
+AI will be used in an assistive sense in order to generate potential improvements to this
+proposed game loop and for figuring out how to scale the game with the screen rotation. AI
+should be used to troubleshoot potential build errors and for bug fixes too. AI Code generation
+will be monitored and will help the game’s optimisation and its feature set. I intend on using
+OpenCode to refine the codebase for the project and will document its contributions and how
+the model has refined the codebase/added to it.
+Development
+
+I will start by familiarising myself with SDL3 graphics programming and its functions in order to
+import some simple sprites and how to put some background planets within a scrolling
+animated background. I can prototype the initial shooting mechanics first with the base game’s
+loop and then figure out how the implementation of the screen rotation mechanic can fit with
+the initially programmed game loop.
+I will be using OOP Design Paradigms to structure the project and utilise an Entity Component
+System to structure the program. The enemies should all be grouped under a general class and
+the player character’s health and powerup/item amount will be attributes separate to this. The
+score and the timer should be tracked per playthrough and will be saved inbetween runs for the
+player to view in the leaderboard section.
+I plan on playtesting this to balance the mechanics and aspects such as the enemy respawn
+frequency, life amount and fire rate of the character. These aspects can be improved with
+extensive playtesting and iteration on the balancing. I will show the work in progress projects to
+my friends and document their feedback via bug reports and surveys: these forms should be
+frequently made and ask meaningful questions about the current game state.
 
 ---
 
@@ -55,11 +121,8 @@ The gameplay loop will include shooting alien enemies in order to get your score
 ## 3. Dependencies
 
 - **SDL3** — window, renderer, input, audio
-- *(Optional/Planned)* SDL3_image — texture loading (PNG)
-- *(Optional/Planned)* SDL3_ttf — font rendering for UI/scores
+- SDL3_image — texture loading (PNG)
 - SDL3_mixer — sound effects & music (looping background track, shoot SFX, wrong-orientation hit SFX)
-
-> Currently only SDL3 is integrated to minimise build friction.
 
 ---
 
@@ -144,14 +207,8 @@ The gameplay loop will include shooting alien enemies in order to get your score
 
 ---
 
-## 6. UML
-
-`docs/uml.png` — Class diagram showing:
-- `Game` (owns `StateMachine`, `Renderer`, `InputManager`, `AssetManager`, `ObjectPool`s)
-- `State` hierarchy (`MenuState`, `PlayingState`, `PausedState`, `GameOverState`, `LeaderboardState`)
-- `GameObject` hierarchy: abstract base with virtual `Update(float dt)`, `Render(SDL_Renderer*)`, `GetBounds()` → `Player`, `Enemy`, `Bullet`, `Particle`
-- `ObjectPool<T>` template (specialised for `Bullet`, `Enemy`, `Particle`)
-- `RotationManager` / `InputRemapper`
+## 6. Initial UML
+uml.png
 
 ---
 
@@ -170,27 +227,35 @@ The gameplay loop will include shooting alien enemies in order to get your score
 
 ## 8. Playtesting
 
-**Participants:** [N testers — peers / family, anonymised T1..Tn]  
-**Evidence:** `playtesting/` (screenshots, notes, survey responses)
+**Participants:** [Friend 1, Friend 2]  
+**Evidence:** `playtesting/` 
 
 ### Changes Made in Response
 
 | Feedback | Change | Commit |
 |----------|--------|--------|
-| [e.g. "Rotation feels disorienting"] | [e.g. Added 150ms rotation animation with screen shake] | [hash] |
+| [e.g. "text"] | [make the text yellow, there's a 0 and 1 on the game over screen
+selected text should appear yellow, the text in general should be white.]
 
-**Reflection:** [Who participated, what was tested, what changed, remaining limitations.]
+**Reflection:** [It was good giving a build to two of my friends and asking about various quality of life features. They liked the game loop and only really found difficulty with reading some of the text so I was able to change this to work better and to scale better with the display.]
 
 ---
 
 ## 9. Evaluation
 
 ### What Went Well
-- [e.g. Rotation mechanic feels unique and polished]
+- [Rotation mechanic feels unique and polished]
+- [Integration of sdl_image and sdl_mixer]
 
 
 ### What I'd Do Differently
-- [e.g. Integrate SDL3_image/ttf earlier for asset pipeline]
-- [e.g. More frequent playtesting earlier in development]
+- [Integrate SDL3_ttf earlier for asset pipeline]
+- [More frequent playtesting earlier in development]
+- [Add more visual flair for the project]
 
-### Proud Of
+### Proud of 
+- [Gameplay loop is satisfying]
+- [Handmade audio samples for game sound suitable]
+- [Game balancing with bullet rate of fire and the bomb cooldown]
+
+
