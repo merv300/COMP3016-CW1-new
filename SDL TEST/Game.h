@@ -20,6 +20,12 @@ enum class GameState {
     Leaderboard
 };
 
+// Options on the Game Over screen.
+enum class GameOverMenu {
+    Retry,
+    EnterName
+};
+
 // A single high-score table entry: player name plus score.
 struct HighScoreEntry {
     char name[16] = {0};
@@ -102,6 +108,9 @@ private:
     char nameBuffer[16] = {0};
     int nameLength = 0;
     bool nameEntryActive = false;
+
+    // Currently highlighted option on the Game Over screen.
+    GameOverMenu gameOverMenu = GameOverMenu::Retry;
 
     // High score table (top 10), persisted to scores.dat.
     HighScoreEntry highScores[kMaxHighScores] = {};

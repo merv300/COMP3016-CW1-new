@@ -35,6 +35,10 @@
 **File persistence**
 > "Save high scores to a binary scores.dat file (top 10, name + score), load at startup, and show a leaderboard state after Game Over name entry."
 
+**Game Over menu and retry**
+> "Add a Game Over menu with 'Retry' (restart immediately) and 'Enter Name' (save score to leaderboard) options, navigated with Up/Down and selected with Space or Return."
+
+
 **Starfield**
 > "Add a parallax starfield background with 160 stars in 3 layers that drift downward and wrap around the world, matching the folk.cpp prototype."
 
@@ -113,9 +117,9 @@ For each AI-generated output:
 ### Game Flow
 - Score scales with the wave number.
 - Clearing the field waits two seconds, then spawns the next wave and increments the wave counter.
-- Losing all lives enters the Game Over state, with a name-entry field ready for high-score persistence.
+- Losing all lives enters the Game Over state with a menu: **Retry** (restart immediately) or **Enter Name** (save score to leaderboard).
 - Entering a name saves the score to `scores.dat` and transitions to the Leaderboard state.
-- Pressing Space on the leaderboard restarts the game.
+- Pressing Space on the leaderboard restarts via `ResetGame()`.
 - Player bullets and enemy bullets use separate pools and colours (yellow vs red).
 
 ### Scoring & Persistence

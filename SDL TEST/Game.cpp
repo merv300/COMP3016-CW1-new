@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <random>
 #include <stdexcept>
@@ -37,6 +38,38 @@ constexpr uint8_t kDigitFont[10][7] = {
     { 0b11111, 0b00001, 0b00001, 0b00001, 0b00001, 0b00001, 0b00001 }, // 7
     { 0b11111, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b11111 }, // 8
     { 0b11111, 0b10001, 0b10001, 0b11111, 0b00001, 0b00001, 0b11111 }, // 9
+};
+
+// 5x7 bitmap letters for rendering text labels without SDL3_ttf.
+// Index: 'A' = 0 ... 'Z' = 25, space = 26.
+constexpr uint8_t kLetterFont[27][7] = {
+    { 0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001 }, // A
+    { 0b11110, 0b10001, 0b10001, 0b11110, 0b10001, 0b10001, 0b11110 }, // B
+    { 0b01110, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b01110 }, // C
+    { 0b11100, 0b10010, 0b10001, 0b10001, 0b10001, 0b10010, 0b11100 }, // D
+    { 0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111 }, // E
+    { 0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b10000 }, // F
+    { 0b01110, 0b10000, 0b10000, 0b10111, 0b10001, 0b10001, 0b01110 }, // G
+    { 0b10001, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001 }, // H
+    { 0b01111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01111 }, // I
+    { 0b00011, 0b00010, 0b00010, 0b00010, 0b00010, 0b10010, 0b01100 }, // J
+    { 0b10001, 0b10011, 0b10101, 0b11001, 0b10101, 0b10011, 0b10001 }, // K
+    { 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b11111 }, // L
+    { 0b10001, 0b11011, 0b10101, 0b10101, 0b10001, 0b10001, 0b10001 }, // M
+    { 0b10001, 0b11001, 0b10101, 0b10101, 0b10011, 0b10001, 0b10001 }, // N
+    { 0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110 }, // O
+    { 0b11110, 0b10001, 0b10001, 0b11110, 0b10000, 0b10000, 0b10000 }, // P
+    { 0b01110, 0b10001, 0b10001, 0b10001, 0b10101, 0b11001, 0b01111 }, // Q
+    { 0b11110, 0b10001, 0b10001, 0b11110, 0b10101, 0b10011, 0b10001 }, // R
+    { 0b01110, 0b10000, 0b10000, 0b01110, 0b00001, 0b00001, 0b01110 }, // S
+    { 0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100 }, // T
+    { 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110 }, // U
+    { 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100 }, // V
+    { 0b10001, 0b10001, 0b10001, 0b10101, 0b10101, 0b01010, 0b00100 }, // W
+    { 0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001 }, // X
+    { 0b10001, 0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b00100 }, // Y
+    { 0b11111, 0b00001, 0b00011, 0b00101, 0b01001, 0b10001, 0b11111 }, // Z
+    { 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000 }, // space (26)
 };
 
 // Draws an integer as bitmap digits (no SDL3_ttf dependency).
@@ -79,6 +112,46 @@ int DrawNumber(SDL_Renderer* renderer, int x, int y, int value, int scale = 2) {
     }
 
     return digitCount * 5 * scale + (digitCount - 1) * scale;
+}
+
+// Draws a text string as bitmap letters (no SDL3_ttf dependency).
+// Only uppercase A-Z and space are supported. Returns the pixel width.
+int DrawText(SDL_Renderer* renderer, int x, int y, const char* text, int scale = 1) {
+    int totalWidth = 0;
+    int drawX = x;
+
+    for (const char* p = text; *p != '\0'; ++p) {
+        char c = *p;
+        if (c == ' ') {
+            drawX += 5 * scale + scale;
+            totalWidth += 5 * scale + scale;
+            continue;
+        }
+
+        int letterIndex = c - 'A';
+        if (letterIndex < 0 || letterIndex > 25) {
+            continue;
+        }
+
+        for (int row = 0; row < 7; ++row) {
+            uint8_t rowBits = kLetterFont[letterIndex][row];
+            for (int col = 0; col < 5; ++col) {
+                if ((rowBits >> (4 - col)) & 1u) {
+                    SDL_FRect pixel{
+                        static_cast<float>(drawX + col * scale),
+                        static_cast<float>(y + row * scale),
+                        static_cast<float>(scale),
+                        static_cast<float>(scale)
+                    };
+                    SDL_RenderFillRect(renderer, &pixel);
+                }
+            }
+        }
+        drawX += 5 * scale + scale;
+        totalWidth += 5 * scale + scale;
+    }
+
+    return totalWidth;
 }
 
 } // namespace
@@ -287,9 +360,10 @@ void Game::UpdatePlaying(float deltaTime) {
     // Check game over.
     if (lives <= 0 && state == GameState::Playing) {
         state = GameState::GameOver;
-        nameEntryActive = true;
+        nameEntryActive = false;
         nameLength = 0;
         nameBuffer[0] = '\0';
+        gameOverMenu = GameOverMenu::Retry;
     }
 }
 
@@ -403,11 +477,29 @@ void Game::UpdateGameOver(float deltaTime) {
             nameEntryActive = false;
             state = GameState::Leaderboard;
         }
+        return;
     }
 
-    if (input.WasKeyPressed(SDL_SCANCODE_SPACE) || input.WasKeyPressed(SDL_SCANCODE_RETURN)) {
-        if (!nameEntryActive) {
+    // Menu navigation: Up/Down or W/S to switch between Retry and Enter Name.
+    if (input.WasKeyPressed(SDL_SCANCODE_UP) ||
+        input.WasKeyPressed(SDL_SCANCODE_DOWN) ||
+        input.WasKeyPressed(SDL_SCANCODE_W) ||
+        input.WasKeyPressed(SDL_SCANCODE_S)) {
+        gameOverMenu = (gameOverMenu == GameOverMenu::Retry)
+            ? GameOverMenu::EnterName
+            : GameOverMenu::Retry;
+    }
+
+    // Select the highlighted option.
+    if (input.WasKeyPressed(SDL_SCANCODE_SPACE) ||
+        input.WasKeyPressed(SDL_SCANCODE_RETURN) ||
+        input.WasKeyPressed(SDL_SCANCODE_KP_ENTER)) {
+        if (gameOverMenu == GameOverMenu::Retry) {
             ResetGame();
+        } else {
+            nameEntryActive = true;
+            nameLength = 0;
+            nameBuffer[0] = '\0';
         }
     }
 }
@@ -654,6 +746,7 @@ void Game::ResetGame() {
     nameEntryActive = false;
     nameLength = 0;
     nameBuffer[0] = '\0';
+    gameOverMenu = GameOverMenu::Retry;
 
     bulletPool.ReleaseAll();
     enemyBulletPool.ReleaseAll();
@@ -774,7 +867,7 @@ void Game::RenderUI() {
 
     // Score — bitmap digits in top-right (white)
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    const int scoreTextWidth = DrawNumber(renderer, windowWidth - 20, 10, score);
+    const int scoreTextWidth = DrawNumber(renderer, windowWidth - 20, 10, score, 4);
 
     // Lives
     for (int i = 0; i < lives; ++i) {
@@ -841,7 +934,73 @@ void Game::RenderUI() {
                 // Would draw nameBuffer + '_'
             }
         } else {
-            // Press Space to restart
+            // Title
+            SDL_SetRenderDrawColor(renderer, 255, 80, 80, 255);
+            DrawNumber(renderer, static_cast<int>(box.x + boxW * 0.5f),
+                       static_cast<int>(box.y + 50.0f), score, 5);
+
+            // Menu options
+            const float optionY = box.y + 150.0f;
+            const float optionGap = 44.0f;
+
+            // Retry
+            {
+                const bool selected = (gameOverMenu == GameOverMenu::Retry);
+                const Uint8 r = selected ? 255 : 120;
+                const Uint8 g = selected ? 220 : 120;
+                const Uint8 b = selected ? 80 : 120;
+                const Uint8 a = selected ? 255 : 150;
+
+                const float iconX = box.x + boxW * 0.5f - 60.0f;
+
+                // Selection arrow
+                if (selected) {
+                    SDL_SetRenderDrawColor(renderer, r, g, b, a);
+                    SDL_FRect arrow{iconX, static_cast<float>(optionY + 6.0f), 14.0f, 14.0f};
+                    SDL_RenderFillRect(renderer, &arrow);
+                }
+
+                // Digit icon (0 for Retry)
+                SDL_SetRenderDrawColor(renderer, r, g, b, a);
+                DrawNumber(renderer, static_cast<int>(iconX + 20.0f), static_cast<int>(optionY), 0, 3);
+
+                // Text label below as translucent hint
+                SDL_SetRenderDrawColor(renderer, r / 2, g / 2, b / 2, a / 2);
+                DrawText(renderer, static_cast<int>(iconX + 40.0f),
+                         static_cast<int>(optionY + 24.0f), "RETRY", 2);
+            }
+
+            // Enter Name
+            {
+                const bool selected = (gameOverMenu == GameOverMenu::EnterName);
+                const Uint8 r = selected ? 255 : 120;
+                const Uint8 g = selected ? 220 : 120;
+                const Uint8 b = selected ? 80 : 120;
+                const Uint8 a = selected ? 255 : 150;
+
+                const float iconX = box.x + boxW * 0.5f - 60.0f;
+
+                // Selection arrow
+                if (selected) {
+                    SDL_SetRenderDrawColor(renderer, r, g, b, a);
+                    SDL_FRect arrow{iconX, static_cast<float>(optionY + optionGap + 6.0f), 14.0f, 14.0f};
+                    SDL_RenderFillRect(renderer, &arrow);
+                }
+
+                // Digit icon (1 for Enter Name)
+                SDL_SetRenderDrawColor(renderer, r, g, b, a);
+                DrawNumber(renderer, static_cast<int>(iconX + 20.0f), static_cast<int>(optionY + optionGap), 1, 3);
+
+                // Text label below as translucent hint
+                SDL_SetRenderDrawColor(renderer, r / 2, g / 2, b / 2, a / 2);
+                DrawText(renderer, static_cast<int>(iconX + 40.0f),
+                         static_cast<int>(optionY + optionGap + 24.0f), "ENTER NAME", 2);
+            }
+
+            // Hint
+            SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
+            SDL_FRect hintBar{box.x + 40.0f, box.y + boxH - 40.0f, 320.0f, 16.0f};
+            SDL_RenderFillRect(renderer, &hintBar);
         }
     }
 
@@ -876,17 +1035,26 @@ void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
     SDL_FRect titleBar{box.x + 20.0f, box.y + 30.0f, 200.0f, 24.0f};
     SDL_RenderFillRect(renderer, &titleBar);
 
-    // Entries (bars only — SDL3_ttf needed for real text)
+    // Entries (text labels — legible without SDL3_ttf)
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    const float colXName = box.x + 70.0f;
+    const float colXScore = box.x + 300.0f;
+
+    // Column headers (bright, larger)
+    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+    DrawText(renderer, static_cast<int>(colXName), static_cast<int>(box.y + 44.0f), "NAME", 3);
+    DrawText(renderer, static_cast<int>(colXScore), static_cast<int>(box.y + 44.0f), "SCORE", 3);
+
     for (int i = 0; i < highScoreCount && i < kMaxHighScores; ++i) {
         // Bounds check: only read valid entries (fixes C6385/C6386).
         if (i < 0 || i >= kMaxHighScores || i >= highScoreCount) {
             break;
         }
 
-        const float entryY = box.y + 70.0f + i * 24.0f;
+        const float entryY = box.y + 80.0f + i * 44.0f;
 
         // Rank indicator
-        SDL_FRect rankBar{box.x + 40.0f, entryY, 16.0f, 16.0f};
+        SDL_FRect rankBar{box.x + 40.0f, entryY, 24.0f, 24.0f};
         if (i == 0) {
             SDL_SetRenderDrawColor(renderer, 255, 220, 80, 255);   // gold
         } else if (i == 1) {
@@ -898,18 +1066,19 @@ void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
         }
         SDL_RenderFillRect(renderer, &rankBar);
 
-        // Score bar length proportional to score
-        const float maxScoreBarW = 200.0f;
-        float scoreBarW = 0.0f;
-        // Bounds check: guard highScores[0] access (fixes C6385/C6386).
-        if (highScoreCount > 0 && highScores[0].score > 0) {
-            scoreBarW = std::min(maxScoreBarW,
-                                 (static_cast<float>(highScores[i].score) /
-                                  static_cast<float>(highScores[0].score)) * maxScoreBarW);
-        }
-        SDL_FRect scoreBar{box.x + 70.0f, entryY + 2.0f, scoreBarW, 12.0f};
+        // Rank number (scale 2)
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderFillRect(renderer, &scoreBar);
+        DrawNumber(renderer, static_cast<int>(box.x + 50.0f), static_cast<int>(entryY), i + 1, 2);
+
+        // Name text (scale 3 for legibility)
+        const char* entryName = highScores[i].name[0] != '\0' ? highScores[i].name : "--";
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        DrawText(renderer, static_cast<int>(colXName), static_cast<int>(entryY), entryName, 3);
+
+        // Score text (scale 3 for legibility)
+        char scoreBuf[16];
+        snprintf(scoreBuf, sizeof(scoreBuf), "%d", highScores[i].score);
+        DrawText(renderer, static_cast<int>(colXScore), static_cast<int>(entryY), scoreBuf, 3);
     }
 
     // Hint

@@ -130,6 +130,7 @@ The gameplay loop will include shooting alien enemies in order to get your score
 ### Scoring / Lives / Respawn
 - Base score per kill × wave multiplier
 - 3 lives; respawn grants 2s invincibility (blinking sprite)
+- Game Over → menu: **Retry** (restart immediately) or **Enter Name** (save score to leaderboard)
 - Game Over → enter name → Leaderboard
 
 ### File Loading

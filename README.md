@@ -34,7 +34,8 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 - Score scales with the wave number (100 × wave per kill).
 - Bomb kills award a flat score per enemy.
 - High scores are saved to `scores.dat` (top 10, name + score).
-- Enter your name at Game Over, then view the leaderboard. Press Space to restart.
+- Game Over menu: choose **Retry** (restart immediately) or **Enter Name** (save score to leaderboard).
+- Leaderboard displays top 10 scores. Press Space on the leaderboard to restart.
 
 > The world is a fixed 480×800 playfield rendered off-screen, then scaled to fit the 1280×720 window and rotated about its centre. Input is never remapped: A/D always moves along world X.
 
