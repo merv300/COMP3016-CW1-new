@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="ROTATORZ/ROTATORZ.vcxproj" Id="b3c6ac06-5ead-4bd1-b8d9-8fe38ab27056" />
+</Solution>

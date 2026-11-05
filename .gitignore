@@ -434,7 +434,7 @@ FodyWeavers.xsd
 
 # Build output folders (both locations)
 x64/
-SDL TEST/x64/
+ROTATORZ/x64/
 
 # SDL3 runtime DLL (downloaded, not source)
-SDL TEST/SDL3.dll
+ROTATORZ/SDL3.dll

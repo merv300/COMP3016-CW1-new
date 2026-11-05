@@ -194,5 +194,24 @@ For each AI-generated output:
 - A placeholder sample was generated with the Python standard library (0.22 s,
   48 kHz, 16-bit mono) so the effect works out of the box; replace the file to change it.
 
+### Project Rename
+- Renamed the template project from `SDL TEST` to `ROTATORZ`: `ROTATORZ.slnx`,
+  `ROTATORZ/ROTATORZ.vcxproj` and `ROTATORZ/ROTATORZ.cpp`.
+- The output binary is now `x64\Debug\ROTATORZ.exe`, and `RootNamespace` is `ROTATORZ`.
+- Updated the solution's project path, the `.vcxproj.filters` entry, `.gitignore`
+  build/DLL paths, and the README repository tree.
+- Renames were done with `git mv`, so file history follows the moved files.
+
+### Enemy Shooting Sound
+- Added `assets/enemy_shoot.wav`, played from `Game::PlayEnemyShootSound()` whenever a
+  front-line enemy spawns a bullet.
+- Because enemy fire is frequent, the sample plays at `kEnemyShootGain` (0.35) instead
+  of full volume. Adjust that constant to taste.
+- Playback uses four round-robin tracks (`kEnemyShootVoices`) created once in
+  `LoadAssets()`, each with the gain preset, so simultaneous shots overlap instead of
+  restarting one shared track and cutting each other off.
+- Tracks and audio are freed in `UnloadAssets()` under the usual `RTZ_USE_SDL3_MIXER`
+  guards; a missing file only logs a message and the game keeps running.
+
 
 ---

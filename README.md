@@ -64,7 +64,7 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 ### Requirements
 - **Visual Studio 2022** (Desktop development with C++ workload)
 - **Windows 10/11 x64**
-- **SDL3** development libraries (included in `SDL TEST/SDL3.dll`)
+- **SDL3** development libraries (included in `ROTATORZ/SDL3.dll`)
 
 ### Open & Build
 
@@ -80,10 +80,10 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 
 ```
 ROTATORZ/
-├── SDL TEST.slnx
-├── SDL TEST/
-│   ├── SDL TEST.cpp
-│   ├── SDL TEST.vcxproj
+├── ROTATORZ.slnx
+├── ROTATORZ/
+│   ├── ROTATORZ.cpp
+│   ├── ROTATORZ.vcxproj
 │   ├── SDL3.dll
 │   └── assets/
 │       ├── player.png
@@ -91,6 +91,7 @@ ROTATORZ/
 │       ├── enemy_landscape.png
 │       ├── music.ogg
 │       ├── shoot.wav
+│       ├── enemy_shoot.wav
 │       └── hit_wrong.wav
 ├── docs/
 ├── playtesting/

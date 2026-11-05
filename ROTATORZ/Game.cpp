@@ -304,6 +304,21 @@ void Game::LoadAssets() {
     if (wrongHitAudio == nullptr) {
         SDL_Log("Wrong-orientation hit SFX failed to load: %s", SDL_GetError());
     }
+
+    // Enemy shots: several voices at a reduced gain so the frequent fire does
+    // not drown out the music and player feedback.
+    enemyShootAudio = MIX_LoadAudio(mixer, kAssetEnemyShootSfx, true);
+    if (enemyShootAudio != nullptr) {
+        for (int i = 0; i < kEnemyShootVoices; ++i) {
+            enemyShootTracks[i] = MIX_CreateTrack(mixer);
+            if (enemyShootTracks[i] != nullptr) {
+                MIX_SetTrackAudio(enemyShootTracks[i], enemyShootAudio);
+                MIX_SetTrackGain(enemyShootTracks[i], kEnemyShootGain);
+            }
+        }
+    } else {
+        SDL_Log("Enemy shoot SFX failed to load: %s", SDL_GetError());
+    }
 #endif
 }
 
@@ -316,6 +331,16 @@ void Game::UnloadAssets() {
     if (wrongHitAudio != nullptr) {
         MIX_DestroyAudio(wrongHitAudio);
         wrongHitAudio = nullptr;
+    }
+    for (int i = 0; i < kEnemyShootVoices; ++i) {
+        if (enemyShootTracks[i] != nullptr) {
+            MIX_DestroyTrack(enemyShootTracks[i]);
+            enemyShootTracks[i] = nullptr;
+        }
+    }
+    if (enemyShootAudio != nullptr) {
+        MIX_DestroyAudio(enemyShootAudio);
+        enemyShootAudio = nullptr;
     }
     if (musicTrack != nullptr) {
         MIX_DestroyTrack(musicTrack);
@@ -507,8 +532,24 @@ void Game::UpdateEnemyFire(float deltaTime) {
             const Vec2 spawnPos{origin.x, origin.y + kEnemyH * 0.5f};
             enemyBulletPool.Acquire(spawnPos, Vec2{0.0f, 1.0f},
                                     kEnemyBulletSpeed, BulletType::Enemy);
+            PlayEnemyShootSound();
         }
     });
+}
+
+void Game::PlayEnemyShootSound() {
+#ifdef RTZ_USE_SDL3_MIXER
+    if (mixer == nullptr || enemyShootAudio == nullptr) {
+        return;
+    }
+
+    // Rotate through the voices so overlapping shots all get heard.
+    MIX_Track* track = enemyShootTracks[enemyShootVoice];
+    enemyShootVoice = (enemyShootVoice + 1) % kEnemyShootVoices;
+    if (track != nullptr) {
+        MIX_PlayTrack(track, 0);
+    }
+#endif
 }
 
 void Game::UpdateBombs() {

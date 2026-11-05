@@ -68,6 +68,7 @@ private:
     void DrawWorld();
     void UpdatePlaying(float deltaTime);
     void UpdateEnemyFire(float deltaTime);
+    void PlayEnemyShootSound();
     void UpdateGameOver(float deltaTime);
 
     void SpawnWave();
@@ -97,6 +98,9 @@ private:
     MIX_Audio* musicAudio = nullptr;
     MIX_Track* musicTrack = nullptr;
     MIX_Audio* shootAudio = nullptr;
+    MIX_Audio* enemyShootAudio = nullptr;
+    MIX_Track* enemyShootTracks[kEnemyShootVoices] = {};
+    int enemyShootVoice = 0;
     MIX_Audio* wrongHitAudio = nullptr;
 #endif
 

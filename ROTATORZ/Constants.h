@@ -26,6 +26,14 @@ inline constexpr float kPlayerY = kWorldHeight - 60.0f;
 inline constexpr float kPlayerInvuln = 1.5f;
 inline constexpr float kFireCooldown = 0.22f;
 
+// Enemy shots fire far more often than player shots, so the enemy sound plays
+// quieter than the rest of the mix. 1.0 is full volume.
+inline constexpr float kEnemyShootGain = 0.35f;
+
+// Round-robin voices so near-simultaneous enemy shots overlap instead of
+// cutting each other off when they share one track.
+inline constexpr int kEnemyShootVoices = 4;
+
 // Minimum gap between "wrong orientation" hit sounds. Several bullets can
 // strike in the same frame, and stacking the same sample sounds like clipping.
 inline constexpr float kWrongHitSfxCooldown = 0.06f;
@@ -73,6 +81,7 @@ inline constexpr const char* kAssetEnemyPortrait = "assets/enemy_portrait.png"; 
 inline constexpr const char* kAssetEnemyLandscape = "assets/enemy_landscape.png"; // green, killable at 90°
 inline constexpr const char* kAssetMusic = "assets/music.ogg";
 inline constexpr const char* kAssetShootSfx = "assets/shoot.wav";
+inline constexpr const char* kAssetEnemyShootSfx = "assets/enemy_shoot.wav";
 inline constexpr const char* kAssetWrongHitSfx = "assets/hit_wrong.wav"; // shot hit an enemy aligned to the other axis
 
 } // namespace rtz
