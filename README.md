@@ -264,6 +264,6 @@ See **[`ai-development-log.md`](./ai-development-log.md)** for transparency.
 
 ## 📺 Demo Video
 
-- **YouTube (unlisted, 1080p, ≤10 min)**: *[link to be added]*
+- **YouTube (unlisted, 1080p, ≤10 min)**: *[https://youtu.be/5KKdsaFVGT0]*
 
 ---
