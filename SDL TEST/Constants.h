@@ -25,6 +25,10 @@ inline constexpr float kPlayerMargin = 15.0f;
 inline constexpr float kPlayerY = kWorldHeight - 60.0f;
 inline constexpr float kPlayerInvuln = 1.5f;
 inline constexpr float kFireCooldown = 0.22f;
+
+// Minimum gap between "wrong orientation" hit sounds. Several bullets can
+// strike in the same frame, and stacking the same sample sounds like clipping.
+inline constexpr float kWrongHitSfxCooldown = 0.06f;
 inline constexpr float kPlayerBulletSpeed = 700.0f;
 
 // --- Bomb ---
@@ -62,5 +66,13 @@ inline constexpr float kWaveClearDelay = 2.0f;
 // --- High scores ---
 inline constexpr int kMaxHighScores = 10;
 inline constexpr const char* kScoresFilename = "scores.dat";
+
+// --- Asset paths (place your files in the assets/ folder next to the exe) ---
+inline constexpr const char* kAssetPlayerSprite = "assets/player.png";
+inline constexpr const char* kAssetEnemyPortrait = "assets/enemy_portrait.png"; // orange, killable at 0°
+inline constexpr const char* kAssetEnemyLandscape = "assets/enemy_landscape.png"; // green, killable at 90°
+inline constexpr const char* kAssetMusic = "assets/music.ogg";
+inline constexpr const char* kAssetShootSfx = "assets/shoot.wav";
+inline constexpr const char* kAssetWrongHitSfx = "assets/hit_wrong.wav"; // shot hit an enemy aligned to the other axis
 
 } // namespace rtz

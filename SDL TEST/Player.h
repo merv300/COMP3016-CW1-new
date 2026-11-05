@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SDL3/SDL.h>
 #include "GameObject.h"
 #include "Vec2.h"
 
@@ -8,6 +9,11 @@ namespace rtz {
 class Player final : public GameObject {
 public:
     Player(Vec2 startPosition, float size);
+
+    // Loads the ship sprite once (call from Game::Initialize). Falls back to a
+    // coloured rectangle if loading fails or this isn't called.
+    static bool LoadTexture(SDL_Renderer* renderer, const char* path);
+    static void UnloadTexture();
 
     // Intent is supplied as world-X only (-1 = left, 1 = right, 0 = none).
     // The view rotation is purely visual, so the player never remaps input.
@@ -32,6 +38,7 @@ private:
     float speed = 320.0f;
     bool firing = false;
     float viewAngle = 0.0f;
+    static SDL_Texture* s_texture;
 };
 
 } // namespace rtz

@@ -3,9 +3,38 @@
 #include <algorithm>
 #include <cmath>
 
+#ifdef RTZ_USE_SDL3_IMAGE
+#include <SDL3_image/SDL_image.h>
+#endif
+
 #include "Constants.h"
 
 namespace rtz {
+
+SDL_Texture* Player::s_texture = nullptr;
+
+bool Player::LoadTexture(SDL_Renderer* renderer, const char* path) {
+#ifdef RTZ_USE_SDL3_IMAGE
+    UnloadTexture();
+    SDL_Surface* surf = IMG_Load(path);
+    if (surf == nullptr) {
+        return false;
+    }
+    s_texture = SDL_CreateTextureFromSurface(renderer, surf);
+    SDL_DestroySurface(surf);
+    return s_texture != nullptr;
+#else
+    (void)renderer; (void)path;
+    return false;
+#endif
+}
+
+void Player::UnloadTexture() {
+    if (s_texture != nullptr) {
+        SDL_DestroyTexture(s_texture);
+        s_texture = nullptr;
+    }
+}
 
 Player::Player(Vec2 startPosition, float playerSize)
     : position(startPosition), size(playerSize), speed(kPlayerSpeed) {}
@@ -25,9 +54,16 @@ void Player::Update(float deltaTime) {
 }
 
 void Player::Render(SDL_Renderer* renderer) {
-    SDL_FRect body = GetBounds();
-    SDL_SetRenderDrawColor(renderer, 120, 220, 255, 255);
-    SDL_RenderFillRect(renderer, &body);
+    // Draw the ship sprite if loaded, falling back to a coloured rectangle.
+    if (s_texture != nullptr) {
+        SDL_FRect body = GetBounds();
+        SDL_SetTextureColorMod(s_texture, 255, 255, 255);
+        SDL_RenderTexture(renderer, s_texture, nullptr, &body);
+    } else {
+        SDL_FRect body = GetBounds();
+        SDL_SetRenderDrawColor(renderer, 120, 220, 255, 255);
+        SDL_RenderFillRect(renderer, &body);
+    }
 
     // Nose indicator points to screen-up (-Y in world space). It is rotated
     // visually by the view angle so it always points "up" on the rotated screen.

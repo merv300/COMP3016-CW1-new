@@ -57,7 +57,7 @@ The gameplay loop will include shooting alien enemies in order to get your score
 - **SDL3** — window, renderer, input, audio
 - *(Optional/Planned)* SDL3_image — texture loading (PNG)
 - *(Optional/Planned)* SDL3_ttf — font rendering for UI/scores
-- *(Optional/Planned)* irrKlang — sound effects & music
+- SDL3_mixer — sound effects & music (looping background track, shoot SFX, wrong-orientation hit SFX)
 
 > Currently only SDL3 is integrated to minimise build friction.
 

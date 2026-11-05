@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SDL3/SDL.h>
 #include "GameObject.h"
 #include "Vec2.h"
 
@@ -20,6 +21,13 @@ public:
     // orientation - which view rotation kills it (also drives its colour)
     // wave        - current wave number (scales score)
     void Activate(const Vec2& startPos, EnemyOrientation orientation, int wave);
+
+    // Loads the two enemy sprites once (call from Game::Initialize). Falls back
+    // to coloured rectangles if loading fails or this isn't called.
+    static bool LoadTextures(SDL_Renderer* renderer,
+                             const char* portraitPath,
+                             const char* landscapePath);
+    static void UnloadTextures();
 
     void Deactivate() override;
 
@@ -48,6 +56,9 @@ private:
     int scoreValue = 100;
     int wave = 1;
     static constexpr float kHitFlashDuration = 0.1f;
+
+    static SDL_Texture* s_portraitTexture;
+    static SDL_Texture* s_landscapeTexture;
 };
 
 } // namespace rtz

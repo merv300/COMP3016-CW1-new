@@ -86,6 +86,12 @@ ROTATORZ/
 │   ├── SDL TEST.vcxproj
 │   ├── SDL3.dll
 │   └── assets/
+│       ├── player.png
+│       ├── enemy_portrait.png
+│       ├── enemy_landscape.png
+│       ├── music.ogg
+│       ├── shoot.wav
+│       └── hit_wrong.wav
 ├── docs/
 ├── playtesting/
 ├── README.md
@@ -125,7 +131,7 @@ See **[`ai-development-log.md`](./ai-development-log.md)** for transparency.
 | **Combat & Progression** | Collision, scoring, lives, wave/difficulty scaling | 🔲 |
 | **State Machine** | Menu / Playing / Paused / GameOver / Leaderboard | 🔲 |
 | **Persistence** | High scores (`scores.dat`), config file loading | 🔲 |
-| **Polish** | Particles, screen shake, sound (irrKlang), UI/menus | 🔲 |
+| **Polish** | Particles, screen shake, sound (SDL3_mixer), UI/menus | 🔲 |
 | **Playtesting** | Internal testing, balancing, bug fixes | 🔲 |
 | **Finalisation** | Video recording, report write-up, zip submission, GitHub polish | 🔲 |
 

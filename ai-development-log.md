@@ -155,4 +155,44 @@ For each AI-generated output:
 - `project.md`: architecture, rotation system, enemy behaviour, and mechanics notes.
 - `ai-development-log.md`: this implementation record.
 
+### Assets and Audio Pipeline
+- Sprites and audio are loaded from an `assets/` folder next to the executable:
+  `player.png`, `enemy_portrait.png`, `enemy_landscape.png`, `music.ogg`, `shoot.wav`.
+- `Player` and `Enemy` load textures through SDL3_image and fall back to coloured
+  rectangles when a file is missing, so the game still runs without assets.
+- SDL3_image has no `IMG_Init`/`IMG_Quit` (that was SDL2_image); initialisation
+  happens automatically on first load.
+- SDL3_mixer 3.x uses the `MIX_*` API rather than the SDL2 `Mix_*` API:
+  `MIX_Init`, `MIX_CreateMixerDevice`, `MIX_LoadAudio`, `MIX_CreateTrack`,
+  `MIX_PlayTrack`, `MIX_PlayAudio`.
+- Audio bug 1: the first implementation called `MIX_CreateMixer()`, which renders
+  into a memory buffer and is never heard. It was replaced with
+  `MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, ...)`.
+- Audio bug 2: music was loaded and assigned to a track but never started. Playback
+  now begins with `MIX_PlayTrack` and loops via `MIX_PROP_PLAY_LOOPS_NUMBER = -1`,
+  set at play time because `MIX_SetTrackLoops` is overridden when a stopped track starts.
+- Audio bug 3: the shoot sound created a track per shot but never played it, leaking
+  tracks. It now uses `MIX_PlayAudio`, SDL_mixer's fire-and-forget path.
+- Audio is optional: if the mixer or device cannot be created the game logs a message
+  and continues silently instead of failing to launch.
+- Music was converted from MP3 to OGG to avoid depending on an external MP3 decoder;
+  `libogg-0.dll` ships next to the executable.
+
+### Wrong-Orientation Hit Sound
+- Added `assets/hit_wrong.wav`, played when a player bullet strikes an enemy whose
+  orientation does not match the shot. Portrait enemies hit at 90° and landscape
+  enemies hit at 0° both trigger it.
+- The shot is still consumed on contact (bullets never pass through enemies), so the
+  sound reinforces the rule that the enemy survived only because of the axis.
+- Trigger lives in the `else` branch of `Enemy::IsVulnerableAt(bulletQt)` inside
+  `Game::HandleCollisions()`, using the bullet's fire-time quarter turn rather than
+  the current view angle.
+- Played through `MIX_PlayAudio` and throttled by `kWrongHitSfxCooldown` (60 ms) so
+  several bullets landing on the same frame do not stack into clipping.
+- Loaded in `Game::LoadAssets()` and freed in `Game::UnloadAssets()`, guarded by
+  `RTZ_USE_SDL3_MIXER` like the other audio.
+- A placeholder sample was generated with the Python standard library (0.22 s,
+  48 kHz, 16-bit mono) so the effect works out of the box; replace the file to change it.
+
+
 ---

@@ -2,7 +2,50 @@
 
 #include "Constants.h"
 
+#ifdef RTZ_USE_SDL3_IMAGE
+#include <SDL3_image/SDL_image.h>
+#endif
+
 namespace rtz {
+
+SDL_Texture* Enemy::s_portraitTexture = nullptr;
+SDL_Texture* Enemy::s_landscapeTexture = nullptr;
+
+bool Enemy::LoadTextures(SDL_Renderer* renderer,
+                         const char* portraitPath,
+                         const char* landscapePath) {
+#ifdef RTZ_USE_SDL3_IMAGE
+    UnloadTextures();
+
+    SDL_Surface* surf = IMG_Load(portraitPath);
+    if (surf != nullptr) {
+        s_portraitTexture = SDL_CreateTextureFromSurface(renderer, surf);
+        SDL_DestroySurface(surf);
+    }
+
+    surf = IMG_Load(landscapePath);
+    if (surf != nullptr) {
+        s_landscapeTexture = SDL_CreateTextureFromSurface(renderer, surf);
+        SDL_DestroySurface(surf);
+    }
+
+    return s_portraitTexture != nullptr || s_landscapeTexture != nullptr;
+#else
+    (void)renderer; (void)portraitPath; (void)landscapePath;
+    return false;
+#endif
+}
+
+void Enemy::UnloadTextures() {
+    if (s_portraitTexture != nullptr) {
+        SDL_DestroyTexture(s_portraitTexture);
+        s_portraitTexture = nullptr;
+    }
+    if (s_landscapeTexture != nullptr) {
+        SDL_DestroyTexture(s_landscapeTexture);
+        s_landscapeTexture = nullptr;
+    }
+}
 
 void Enemy::Activate(const Vec2& startPos, EnemyOrientation orient, int waveNumber) {
     GameObject::Activate();
@@ -51,7 +94,12 @@ void Enemy::Update(float deltaTime) {
 void Enemy::Render(SDL_Renderer* renderer) {
     const SDL_FRect rect = GetBounds();
 
-    // Base colour by orientation (proposal: orange = portrait, green = landscape)
+    // Pick the sprite for this enemy's orientation.
+    SDL_Texture* tex = (orientation == EnemyOrientation::LANDSCAPE)
+                           ? s_landscapeTexture
+                           : s_portraitTexture;
+
+    // Base colour by orientation (for the fallback rect and tinting)
     Uint8 r = 220, g = 140, b = 40; // orange = portrait
     if (orientation == EnemyOrientation::LANDSCAPE) {
         r = 60; g = 220; b = 80; // green = landscape
@@ -65,8 +113,13 @@ void Enemy::Render(SDL_Renderer* renderer) {
         b = static_cast<Uint8>(b + (255 - b) * intensity);
     }
 
-    SDL_SetRenderDrawColor(renderer, r, g, b, 255);
-    SDL_RenderFillRect(renderer, &rect);
+    if (tex != nullptr) {
+        SDL_SetTextureColorMod(tex, r, g, b);
+        SDL_RenderTexture(renderer, tex, nullptr, &rect);
+    } else {
+        SDL_SetRenderDrawColor(renderer, r, g, b, 255);
+        SDL_RenderFillRect(renderer, &rect);
+    }
 
     // Orientation marker: a small line hinting at the axis it is aligned to.
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);

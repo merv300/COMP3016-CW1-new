@@ -2,6 +2,15 @@
 
 #include <SDL3/SDL.h>
 
+#ifdef RTZ_USE_SDL3_MIXER
+#include <SDL3_mixer/SDL_mixer.h>
+#else
+// Forward declarations so the header compiles without SDL3_mixer installed.
+struct MIX_Mixer;
+struct MIX_Audio;
+struct MIX_Track;
+#endif
+
 #include "Constants.h"
 #include "InputManager.h"
 #include "Player.h"
@@ -67,6 +76,8 @@ private:
     void DetonateBomb(float centerX, float centerY);
     void DamagePlayer();
     void ResetGame();
+    void LoadAssets();       // loads sprites, music and SFX
+    void UnloadAssets();     // frees all loaded assets
     void RenderUI();
     void LoadHighScores();
     void SaveHighScores();
@@ -79,6 +90,15 @@ private:
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
     SDL_Texture* worldTexture = nullptr;
+
+    // Loaded assets
+#ifdef RTZ_USE_SDL3_MIXER
+    MIX_Mixer* mixer = nullptr;
+    MIX_Audio* musicAudio = nullptr;
+    MIX_Track* musicTrack = nullptr;
+    MIX_Audio* shootAudio = nullptr;
+    MIX_Audio* wrongHitAudio = nullptr;
+#endif
 
     InputManager input;
     Player player{Vec2{kWorldWidth * 0.5f, kPlayerY}, kPlayerSize};
@@ -108,6 +128,7 @@ private:
     int wave = 1;
     float waveClearTimer = 0.0f;
     float fireCooldown = 0.0f;
+    float wrongHitSfxCooldown = 0.0f;
     float bombCooldown = kBombCooldownTime; // start ready
     float respawnInvincibilityTimer = 0.0f;
     static constexpr float kRespawnInvincibilityTime = kPlayerInvuln;

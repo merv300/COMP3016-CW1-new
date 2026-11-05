@@ -188,9 +188,29 @@ void Game::Run() {
 }
 
 void Game::Initialize() {
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
     }
+
+#ifdef RTZ_USE_SDL3_MIXER
+    // SDL3_mixer for music and sound effects. Audio is optional: if the
+    // device cannot be opened the game still runs, just silently.
+    if (MIX_Init()) {
+        // Create a mixer attached to the default playback device.
+        // MIX_CreateMixer() alone only renders into a memory buffer and stays
+        // silent, so MIX_CreateMixerDevice() is required for real audio output.
+        SDL_AudioSpec spec{};
+        spec.freq = 48000;
+        spec.format = SDL_AUDIO_F32;
+        spec.channels = 2;
+        mixer = MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec);
+        if (mixer == nullptr) {
+            SDL_Log("Audio disabled, no playback device: %s", SDL_GetError());
+        }
+    } else {
+        SDL_Log("MIX_Init failed, running without audio: %s", SDL_GetError());
+    }
+#endif
 
     if (!SDL_CreateWindowAndRenderer("ROTATORZ", kWindowWidth, kWindowHeight, 0, &window, &renderer)) {
         throw std::runtime_error(std::string("Window/renderer creation failed: ") + SDL_GetError());
@@ -215,11 +235,16 @@ void Game::Initialize() {
 
     SDL_SetTextureScaleMode(worldTexture, SDL_SCALEMODE_LINEAR);
 
+    // Load sprites, music and SFX.
+    LoadAssets();
+
     ResetGame();
     LoadHighScores();
 }
 
 void Game::Shutdown() {
+    UnloadAssets();
+
     if (worldTexture != nullptr) {
         SDL_DestroyTexture(worldTexture);
         worldTexture = nullptr;
@@ -232,7 +257,77 @@ void Game::Shutdown() {
         SDL_DestroyWindow(window);
         window = nullptr;
     }
+#ifdef RTZ_USE_SDL3_MIXER
+    if (mixer != nullptr) {
+        MIX_DestroyMixer(mixer);
+        mixer = nullptr;
+    }
+    MIX_Quit();
+#endif
     SDL_Quit();
+}
+
+void Game::LoadAssets() {
+    // Sprites — falls back to coloured rectangles if files are missing.
+    Player::LoadTexture(renderer, kAssetPlayerSprite);
+    Enemy::LoadTextures(renderer, kAssetEnemyPortrait, kAssetEnemyLandscape);
+
+#ifdef RTZ_USE_SDL3_MIXER
+    if (mixer == nullptr) {
+        return;  // Audio device unavailable; sprites still work.
+    }
+
+    // Music — stream from disk and loop forever.
+    musicAudio = MIX_LoadAudio(mixer, kAssetMusic, false);
+    if (musicAudio != nullptr) {
+        musicTrack = MIX_CreateTrack(mixer);
+        MIX_SetTrackAudio(musicTrack, musicAudio);
+
+        // The loop count has to be supplied when playback starts; setting it
+        // on a stopped track is overwritten by MIX_PlayTrack().
+        SDL_PropertiesID playProps = SDL_CreateProperties();
+        SDL_SetNumberProperty(playProps, MIX_PROP_PLAY_LOOPS_NUMBER, -1);
+        MIX_PlayTrack(musicTrack, playProps);
+        SDL_DestroyProperties(playProps);
+    } else {
+        SDL_Log("Music failed to load: %s", SDL_GetError());
+    }
+
+    // Sound effects — predecoded so they can retrigger instantly.
+    shootAudio = MIX_LoadAudio(mixer, kAssetShootSfx, true);
+    if (shootAudio == nullptr) {
+        SDL_Log("Shoot SFX failed to load: %s", SDL_GetError());
+    }
+
+    // Played when a shot hits an enemy aligned to the other axis.
+    wrongHitAudio = MIX_LoadAudio(mixer, kAssetWrongHitSfx, true);
+    if (wrongHitAudio == nullptr) {
+        SDL_Log("Wrong-orientation hit SFX failed to load: %s", SDL_GetError());
+    }
+#endif
+}
+
+void Game::UnloadAssets() {
+#ifdef RTZ_USE_SDL3_MIXER
+    if (shootAudio != nullptr) {
+        MIX_DestroyAudio(shootAudio);
+        shootAudio = nullptr;
+    }
+    if (wrongHitAudio != nullptr) {
+        MIX_DestroyAudio(wrongHitAudio);
+        wrongHitAudio = nullptr;
+    }
+    if (musicTrack != nullptr) {
+        MIX_DestroyTrack(musicTrack);
+        musicTrack = nullptr;
+    }
+    if (musicAudio != nullptr) {
+        MIX_DestroyAudio(musicAudio);
+        musicAudio = nullptr;
+    }
+#endif
+    Player::UnloadTexture();
+    Enemy::UnloadTextures();
 }
 
 void Game::PollEvents() {
@@ -301,6 +396,9 @@ void Game::UpdatePlaying(float deltaTime) {
 
     // Player fire (always up in world space; rotation is visual only).
     fireCooldown -= deltaTime;
+    if (wrongHitSfxCooldown > 0.0f) {
+        wrongHitSfxCooldown -= deltaTime;
+    }
     if (input.IsFiring() && fireCooldown <= 0.0f) {
         fireCooldown = kFireCooldown;
         const Vec2 forward{0.0f, -1.0f};
@@ -310,6 +408,13 @@ void Game::UpdatePlaying(float deltaTime) {
         // orientation stays fixed even if the player rotates mid-flight.
         const int firedQt = (targetAngle == 90.0f) ? 1 : 0;
         bulletPool.Acquire(spawnPos, forward, kPlayerBulletSpeed, BulletType::Player, firedQt);
+
+        // Shoot sound effect (fire-and-forget; SDL_mixer manages the track).
+#ifdef RTZ_USE_SDL3_MIXER
+        if (mixer != nullptr && shootAudio != nullptr) {
+            MIX_PlayAudio(mixer, shootAudio);
+        }
+#endif
     }
 
     // Bomb cooldown tick (starts fully charged on a fresh game).
@@ -625,12 +730,14 @@ void Game::UpdateMenu(float deltaTime) {
     // Animate starfield background
     starPool.ForEachActive([deltaTime](Star& star) { star.Update(deltaTime); });
 
-    // Menu navigation: Up/Down or W/S to switch options.
+    // Menu navigation: Up/W moves up, Down/S moves down (wrap around).
+    const int optionCount = 3;
     if (input.WasKeyPressed(SDL_SCANCODE_UP) ||
-        input.WasKeyPressed(SDL_SCANCODE_DOWN) ||
-        input.WasKeyPressed(SDL_SCANCODE_W) ||
-        input.WasKeyPressed(SDL_SCANCODE_S)) {
-        menuSelected = (menuSelected + 1) % 3;
+        input.WasKeyPressed(SDL_SCANCODE_W)) {
+        menuSelected = (menuSelected - 1 + optionCount) % optionCount;
+    } else if (input.WasKeyPressed(SDL_SCANCODE_DOWN) ||
+               input.WasKeyPressed(SDL_SCANCODE_S)) {
+        menuSelected = (menuSelected + 1) % optionCount;
     }
 
     // Select the highlighted option.
@@ -710,6 +817,16 @@ void Game::HandleCollisions() {
             if (enemy.IsVulnerableAt(bulletQt)) {
                 enemy.Deactivate();
                 score += enemy.GetScoreValue();
+            } else {
+                // Wrong axis: the shot is absorbed but the enemy survives.
+                // Play a distinct "clang" so the player learns to rotate.
+#ifdef RTZ_USE_SDL3_MIXER
+                if (mixer != nullptr && wrongHitAudio != nullptr &&
+                    wrongHitSfxCooldown <= 0.0f) {
+                    MIX_PlayAudio(mixer, wrongHitAudio);
+                    wrongHitSfxCooldown = kWrongHitSfxCooldown;
+                }
+#endif
             }
         });
     });
@@ -772,6 +889,7 @@ void Game::ResetGame() {
     wave = 1;
     waveClearTimer = kWaveClearDelay;
     fireCooldown = 0.0f;
+    wrongHitSfxCooldown = 0.0f;
     bombCooldown = kBombCooldownTime;
     respawnInvincibilityTimer = 0.0f;
     currentAngle = 0.0f;
@@ -1061,9 +1179,9 @@ void Game::RenderUI() {
 }
 
 void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
-    // Semi-transparent overlay
+    // Opaque overlay so the game world does not show through behind the box
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_FRect overlay{0.0f, 0.0f,
                       static_cast<float>(windowWidth),
                       static_cast<float>(windowHeight)};
