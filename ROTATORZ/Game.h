@@ -34,7 +34,8 @@ enum class GameState {
 // Options on the Game Over screen.
 enum class GameOverMenu {
     Retry,
-    EnterName
+    EnterName,
+    MainMenu
 };
 
 // A single high-score table entry: player name plus score.
@@ -103,6 +104,7 @@ private:
     MIX_Track* enemyShootTracks[kEnemyShootVoices] = {};
     int enemyShootVoice = 0;
     MIX_Audio* wrongHitAudio = nullptr;
+    MIX_Audio* bombAudio = nullptr;
 #endif
 
     InputManager input;

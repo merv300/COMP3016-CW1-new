@@ -86,6 +86,7 @@ inline constexpr const char* kAssetMusic = "assets/music.ogg";
 inline constexpr const char* kAssetShootSfx = "assets/shoot.wav";
 inline constexpr const char* kAssetEnemyShootSfx = "assets/enemy_shoot.wav";
 inline constexpr const char* kAssetWrongHitSfx = "assets/hit_wrong.wav"; // shot hit an enemy aligned to the other axis
+inline constexpr const char* kAssetBombSfx = "assets/bomb.wav"; // bomb detonation (placeholder until replaced)
 inline constexpr const char* kAssetPlanet1 = "assets/planet1.png"; // background scrolling planet
 inline constexpr const char* kAssetPlanet2 = "assets/planet2.png"; // background scrolling planet
 inline constexpr const char* kAssetPlanet3 = "assets/planet3.png"; // background scrolling planet

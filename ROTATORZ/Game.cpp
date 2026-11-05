@@ -343,6 +343,12 @@ void Game::LoadAssets() {
         SDL_Log("Wrong-orientation hit SFX failed to load: %s", SDL_GetError());
     }
 
+    // Bomb detonation. Optional — the game stays silent if the file is missing.
+    bombAudio = MIX_LoadAudio(mixer, kAssetBombSfx, true);
+    if (bombAudio == nullptr) {
+        SDL_Log("Bomb SFX failed to load: %s", SDL_GetError());
+    }
+
     // Enemy shots: several voices at a reduced gain so the frequent fire does
     // not drown out the music and player feedback.
     enemyShootAudio = MIX_LoadAudio(mixer, kAssetEnemyShootSfx, true);
@@ -369,6 +375,10 @@ void Game::UnloadAssets() {
     if (wrongHitAudio != nullptr) {
         MIX_DestroyAudio(wrongHitAudio);
         wrongHitAudio = nullptr;
+    }
+    if (bombAudio != nullptr) {
+        MIX_DestroyAudio(bombAudio);
+        bombAudio = nullptr;
     }
     for (int i = 0; i < kEnemyShootVoices; ++i) {
         if (enemyShootTracks[i] != nullptr) {
@@ -632,6 +642,13 @@ void Game::DetonateBomb(float centerX, float centerY) {
     // Visual blast.
     explosionPool.Acquire(Vec2{centerX, centerY});
 
+    // Explosion sound (optional).
+#ifdef RTZ_USE_SDL3_MIXER
+    if (mixer != nullptr && bombAudio != nullptr) {
+        MIX_PlayAudio(mixer, bombAudio);
+    }
+#endif
+
     // The bomb deliberately ignores orientation: every enemy inside the
     // radius dies, which is what makes it a panic button.
     enemyPool.ForEachActive([this, centerX, centerY](Enemy& enemy) {
@@ -674,26 +691,36 @@ void Game::UpdateGameOver(float deltaTime) {
         return;
     }
 
-    // Menu navigation: Up/Down or W/S to switch between Retry and Enter Name.
+    // Menu navigation: Up/Down or W/S cycles through the three options.
+    constexpr int kOptionCount = 3;
+    int selection = static_cast<int>(gameOverMenu);
     if (input.WasKeyPressed(SDL_SCANCODE_UP) ||
-        input.WasKeyPressed(SDL_SCANCODE_DOWN) ||
-        input.WasKeyPressed(SDL_SCANCODE_W) ||
-        input.WasKeyPressed(SDL_SCANCODE_S)) {
-        gameOverMenu = (gameOverMenu == GameOverMenu::Retry)
-            ? GameOverMenu::EnterName
-            : GameOverMenu::Retry;
+        input.WasKeyPressed(SDL_SCANCODE_W)) {
+        selection = (selection + kOptionCount - 1) % kOptionCount;
+        gameOverMenu = static_cast<GameOverMenu>(selection);
+    } else if (input.WasKeyPressed(SDL_SCANCODE_DOWN) ||
+               input.WasKeyPressed(SDL_SCANCODE_S)) {
+        selection = (selection + 1) % kOptionCount;
+        gameOverMenu = static_cast<GameOverMenu>(selection);
     }
 
     // Select the highlighted option — Enter key only on the death screen.
     if (input.WasKeyPressed(SDL_SCANCODE_RETURN) ||
         input.WasKeyPressed(SDL_SCANCODE_KP_ENTER)) {
-        if (gameOverMenu == GameOverMenu::Retry) {
+        switch (gameOverMenu) {
+        case GameOverMenu::Retry:
             ResetGame();
             state = GameState::Playing;
-        } else {
+            break;
+        case GameOverMenu::EnterName:
             nameEntryActive = true;
             nameLength = 0;
             nameBuffer[0] = '\0';
+            break;
+        case GameOverMenu::MainMenu:
+            menuSelected = 0;
+            state = GameState::Menu;
+            break;
         }
     }
 }
@@ -1087,11 +1114,6 @@ void Game::DrawWorld() {
         SDL_RenderLine(renderer, 0.0f, y, kWorldWidth, y);
     }
 
-    // Marker pinned to the world's top-left corner.
-    SDL_SetRenderDrawColor(renderer, 220, 70, 90, 255);
-    const SDL_FRect marker{20.0f, 20.0f, 40.0f, 40.0f};
-    SDL_RenderFillRect(renderer, &marker);
-
     // Bullets
     bulletPool.ForEachActive([this](Bullet& bullet) { bullet.Render(renderer); });
     enemyBulletPool.ForEachActive([this](Bullet& bullet) { bullet.Render(renderer); });
@@ -1117,11 +1139,17 @@ void Game::RenderUI() {
     int windowHeight = 0;
     SDL_GetWindowSizeInPixels(window, &windowWidth, &windowHeight);
 
-    // Score — bitmap digits in top-right (white)
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    const int scoreTextWidth = DrawNumber(renderer, windowWidth - 20, 10, score, 4);
+    const int margin = 28;
 
-    // Timer — below the score, M:SS format, right-aligned with the score.
+    // Score — large bitmap digits in the top-right.
+    char scoreText[16];
+    std::snprintf(scoreText, sizeof(scoreText), "%d", score);
+    const int scoreScale = 5;
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    DrawText(renderer, windowWidth - margin - MeasureText(scoreText, scoreScale),
+             20, scoreText, scoreScale);
+
+    // Timer — below the score, M:SS format, right-aligned with it.
     const int totalSeconds = static_cast<int>(gameTimer);
     const int minutes = totalSeconds / 60;
     const int seconds = totalSeconds % 60;
@@ -1129,38 +1157,48 @@ void Game::RenderUI() {
     char timerText[16];
     std::snprintf(timerText, sizeof(timerText), "%d:%02d", minutes, seconds);
 
+    const int timerScale = 3;
+    const int timerY = 64;
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    const int timerScale = 2;
-    const int timerY = 62;
-    DrawText(renderer, windowWidth - 20 - MeasureText(timerText, timerScale),
+    DrawText(renderer, windowWidth - margin - MeasureText(timerText, timerScale),
              timerY, timerText, timerScale);
 
-    // Lives
+    // Lives — larger icons in the top-left.
     for (int i = 0; i < lives; ++i) {
-        SDL_FRect lifeIcon{10.0f + i * 28.0f, 40.0f, 20.0f, 20.0f};
+        SDL_FRect lifeIcon{static_cast<float>(margin) + i * 40.0f, 24.0f, 30.0f, 30.0f};
         SDL_SetRenderDrawColor(renderer, 120, 220, 255, 255);
         SDL_RenderFillRect(renderer, &lifeIcon);
     }
 
-    // Wave
-    SDL_FRect waveBar{600.0f, 10.0f, static_cast<float>(wave * 30), 16.0f};
-    SDL_SetRenderDrawColor(renderer, 200, 160, 80, 255);
-    SDL_RenderFillRect(renderer, &waveBar);
+    // Wave number — text instead of a bar so it stays clear as waves climb.
+    char waveText[16];
+    std::snprintf(waveText, sizeof(waveText), "WAVE %d", wave);
+    const int waveScale = 3;
+    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+    DrawText(renderer, margin, 68, waveText, waveScale);
 
-    // Bomb cooldown bar (top-right). Bright yellow when fully charged.
+    // Bomb cooldown bar (top-right, below the timer), with a label so its
+    // purpose is obvious.
     {
-        const float barW = 110.0f;
-        const float barH = 16.0f;
-        const float barX = static_cast<float>(windowWidth) - barW - 20.0f;
-        const float barY = 40.0f;
+        const float barW = 160.0f;
+        const float barH = 24.0f;
+        const float barX = static_cast<float>(windowWidth) - margin - barW;
+        const float barY = 96.0f;
+
+        const int bombLabelScale = 2;
+        const int bombLabelWidth = MeasureText("BOMB", bombLabelScale);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        DrawText(renderer, static_cast<int>(barX - bombLabelWidth - 10.0f),
+                 static_cast<int>(barY + (barH - 7 * bombLabelScale) * 0.5f),
+                 "BOMB", bombLabelScale);
 
         SDL_FRect background{barX, barY, barW, barH};
         SDL_SetRenderDrawColor(renderer, 25, 25, 45, 255);
         SDL_RenderFillRect(renderer, &background);
 
         const float charge = std::min(1.0f, bombCooldown / kBombCooldownTime);
-        SDL_FRect fill{barX + 2.0f, barY + 2.0f,
-                       (barW - 4.0f) * charge, barH - 4.0f};
+        SDL_FRect fill{barX + 3.0f, barY + 3.0f,
+                       (barW - 6.0f) * charge, barH - 6.0f};
         if (charge >= 1.0f) {
             SDL_SetRenderDrawColor(renderer, 255, 220, 80, 255);
         } else {
@@ -1213,67 +1251,40 @@ void Game::RenderUI() {
                 SDL_RenderFillRect(renderer, &cursor);
             }
         } else {
-            // Title
-            SDL_SetRenderDrawColor(renderer, 255, 80, 80, 255);
+            // Score
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
             DrawNumber(renderer, static_cast<int>(box.x + boxW * 0.5f),
                        static_cast<int>(box.y + 50.0f), score, 5);
 
-            // Menu options
+            // Menu options — selected item is yellow, the rest are white.
             const float optionY = box.y + 150.0f;
             const float optionGap = 44.0f;
+            const int labelScale = 2;
 
-            // Retry
-            {
-                const bool selected = (gameOverMenu == GameOverMenu::Retry);
-                const Uint8 r = selected ? 255 : 120;
-                const Uint8 g = selected ? 220 : 120;
-                const Uint8 b = selected ? 80 : 120;
-                const Uint8 a = selected ? 255 : 150;
+            const char* labels[3] = {"RETRY", "ENTER NAME", "MAIN MENU"};
+            const float lineYs[3] = {optionY, optionY + optionGap,
+                                     optionY + optionGap * 2.0f};
 
-                const float iconX = box.x + boxW * 0.5f - 60.0f;
+            for (int i = 0; i < 3; ++i) {
+                const bool selected = (static_cast<int>(gameOverMenu) == i);
 
-                // Selection arrow
                 if (selected) {
-                    SDL_SetRenderDrawColor(renderer, r, g, b, a);
-                    SDL_FRect arrow{iconX, static_cast<float>(optionY + 6.0f), 14.0f, 14.0f};
+                    SDL_SetRenderDrawColor(renderer, 255, 220, 80, 255); // yellow
+                } else {
+                    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // white
+                }
+
+                const int labelWidth = MeasureText(labels[i], labelScale);
+                const float labelX = box.x + (boxW - labelWidth) * 0.5f;
+
+                // Selection arrow sits to the left of the highlighted label.
+                if (selected) {
+                    SDL_FRect arrow{labelX - 30.0f, lineYs[i] + 6.0f, 14.0f, 14.0f};
                     SDL_RenderFillRect(renderer, &arrow);
                 }
 
-                // Digit icon (0 for Retry)
-                SDL_SetRenderDrawColor(renderer, r, g, b, a);
-                DrawNumber(renderer, static_cast<int>(iconX + 20.0f), static_cast<int>(optionY), 0, 3);
-
-                // Text label below as translucent hint
-                SDL_SetRenderDrawColor(renderer, r / 2, g / 2, b / 2, a / 2);
-                DrawText(renderer, static_cast<int>(iconX + 40.0f),
-                         static_cast<int>(optionY + 24.0f), "RETRY", 2);
-            }
-
-            // Enter Name
-            {
-                const bool selected = (gameOverMenu == GameOverMenu::EnterName);
-                const Uint8 r = selected ? 255 : 120;
-                const Uint8 g = selected ? 220 : 120;
-                const Uint8 b = selected ? 80 : 120;
-                const Uint8 a = selected ? 255 : 150;
-
-                const float iconX = box.x + boxW * 0.5f - 60.0f;
-
-                // Selection arrow
-                if (selected) {
-                    SDL_SetRenderDrawColor(renderer, r, g, b, a);
-                    SDL_FRect arrow{iconX, static_cast<float>(optionY + optionGap + 6.0f), 14.0f, 14.0f};
-                    SDL_RenderFillRect(renderer, &arrow);
-                }
-
-                // Digit icon (1 for Enter Name)
-                SDL_SetRenderDrawColor(renderer, r, g, b, a);
-                DrawNumber(renderer, static_cast<int>(iconX + 20.0f), static_cast<int>(optionY + optionGap), 1, 3);
-
-                // Text label below as translucent hint
-                SDL_SetRenderDrawColor(renderer, r / 2, g / 2, b / 2, a / 2);
-                DrawText(renderer, static_cast<int>(iconX + 40.0f),
-                         static_cast<int>(optionY + optionGap + 24.0f), "ENTER NAME", 2);
+                DrawText(renderer, static_cast<int>(labelX),
+                         static_cast<int>(lineYs[i]), labels[i], labelScale);
             }
 
             // Hint
@@ -1309,10 +1320,20 @@ void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_RenderRect(renderer, &box);
 
-    // Title bar
+    // Decorative green banners across the top and bottom of the screen.
+    // Centered horizontally with a small gap from every screen edge.
+    const float bannerGap = 24.0f;
+    const float bannerHeight = 16.0f;
+    const float bannerWidth = static_cast<float>(windowWidth) - bannerGap * 2.0f;
+
     SDL_SetRenderDrawColor(renderer, 80, 200, 120, 255);
-    SDL_FRect titleBar{box.x + 20.0f, box.y + 25.0f, 200.0f, 24.0f};
-    SDL_RenderFillRect(renderer, &titleBar);
+    SDL_FRect topBanner{bannerGap, bannerGap, bannerWidth, bannerHeight};
+    SDL_RenderFillRect(renderer, &topBanner);
+
+    SDL_FRect bottomBanner{bannerGap,
+                           static_cast<float>(windowHeight) - bannerGap - bannerHeight,
+                           bannerWidth, bannerHeight};
+    SDL_RenderFillRect(renderer, &bottomBanner);
 
     // Entries (text labels — legible without SDL3_ttf)
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
@@ -1366,11 +1387,6 @@ void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         DrawNumber(renderer, static_cast<int>(colXScore), static_cast<int>(entryY), highScores[i].score, 3);
     }
-
-    // Hint bar at bottom, below all entries
-    SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
-    SDL_FRect hintBar{box.x + 40.0f, box.y + boxH - 48.0f, 200.0f, 16.0f};
-    SDL_RenderFillRect(renderer, &hintBar);
 }
 
 void Game::RenderMenu(int windowWidth, int windowHeight) {
@@ -1416,10 +1432,11 @@ void Game::RenderMenu(int windowWidth, int windowHeight) {
 
     for (int i = 0; i < 3; ++i) {
         const bool selected = (menuSelected == i);
-        const Uint8 r = selected ? 255 : 120;
-        const Uint8 g = selected ? 220 : 120;
-        const Uint8 b = selected ? 80 : 120;
-        const Uint8 a = selected ? 255 : 150;
+        // Selected item is yellow; all other menu text is white.
+        const Uint8 r = selected ? 255 : 255;
+        const Uint8 g = selected ? 220 : 255;
+        const Uint8 b = selected ? 80 : 255;
+        const Uint8 a = 255;
 
         // Selection arrow on the left
         if (selected) {

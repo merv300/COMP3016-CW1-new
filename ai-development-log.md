@@ -213,9 +213,18 @@ For each AI-generated output:
 - Tracks and audio are freed in `UnloadAssets()` under the usual `RTZ_USE_SDL3_MIXER`
   guards; a missing file only logs a message and the game keeps running.
 
+### Bomb Explosion Sound
+- Added `assets/bomb.wav` as a replaceable placeholder and wired it to
+  `Game::DetonateBomb()` via `MIX_PlayAudio()`.
+- Loaded in `LoadAssets()` into `bombAudio` and freed in `UnloadAssets()`. A missing
+  file is non-fatal: it logs and the bomb stays silent.
+- Path constant: `kAssetBombSfx` in `Constants.h`.
+
 ### Sprite Cleanup
 - Removed the procedural white "nose indicator" line and the yellow muzzle line that
   were drawn on top of the player sprite.
+- Removed the red 40×40 marker that was pinned to the world's top-left corner. It was
+  a debug orientation aid and is no longer needed now that the HUD is readable.
 - Removed the white orientation marker line drawn across every enemy sprite.
 - Deleted the now-unused `firing` / `viewAngle` members and their setters from `Player`,
   along with the corresponding `Game` calls. Orientation is still readable from the
@@ -238,6 +247,27 @@ For each AI-generated output:
 - Starts at 0 in `ResetGame()` and ticks up every frame in `UpdatePlaying()`.
 - Shown only during gameplay, not on menus.
 - Extended the bitmap font (`DrawText`) to support digits and `:`, and added `MeasureText` for right-alignment. This also fixes the `F11: TOGGLE FULLSCREEN` hint, which previously dropped the digits and colon.
+
+### UI Text Styling
+- Game Over screen no longer draws the `0`/`1` digit icons beside the Retry/Enter Name
+  options. Both options are now single-line labels: the selected one is yellow
+  (`255, 220, 80`) and the unselected one is white, with the arrow to the left.
+- Main menu options follow the same rule: selected is yellow, all other option text
+  is white instead of dim grey.
+- The Game Over score is now white (was red).
+- **Leaderboard banners:** the small green title bar and grey hint bar were replaced
+  with matching green decorative banners across the top and bottom of the screen.
+  Both are horizontally centred with a 24 px gap from the screen edges
+  (`bannerWidth = windowWidth - bannerGap * 2`) and 16 px tall.
+- **Return to menu from Game Over:** added a third `MainMenu` option to
+  `GameOverMenu`, labelled `MAIN MENU`. Navigation now cycles Retry → Enter Name →
+  Main Menu with Up/Down or W/S, and pressing Enter on Main Menu sets
+  `state = GameState::Menu` and resets `menuSelected` to 0.
+
+- **HUD scaling:** enlarged the in-game UI and laid it out so nothing overlaps:
+  score at scale 5 (top-right), timer at scale 3 directly below it, a 160×24 bomb bar
+  with a `BOMB` label below the timer, 30×30 life icons in the top-left, and the wave
+  number rendered as `WAVE n` text at scale 3 instead of a width-scaling bar.
 
 ### Background Layer Changes
 - **Slower gun fire rate:** `kFireCooldown` increased from `0.22f` to `0.28f` so the

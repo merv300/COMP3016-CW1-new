@@ -35,7 +35,7 @@ A 2D space shooter in C++ / SDL3 where the screen rotates 90° to expose orienta
 - Score scales with the wave number (100 × wave per kill)
 - Bomb kills award a flat score per enemy
 - High scores are saved to `scores.dat` (top 10, name + score)
-- Game Over menu: choose **Retry** (restart immediately) or **Enter Name** (save score to leaderboard). Selection uses **Enter only**. Typed characters render in the entry field with a blinking cursor
+- Game Over menu: choose **Retry** (restart immediately), **Enter Name** (save score to leaderboard), or **Main Menu** (return to the title screen). Navigate with **Up/Down** or **W/S**, select with **Enter**. Typed characters render in the entry field with a blinking cursor
 - Leaderboard displays top 10 scores. Press Space on the leaderboard to return to the menu
 - **Survival timer**: counts the player's time alive in the current run, shown top-right in the gameplay HUD (M:SS format, below the score)
 
@@ -68,6 +68,7 @@ ROTATORZ/
     ├── shoot.wav
     ├── enemy_shoot.wav
     ├── hit_wrong.wav
+    ├── bomb.wav
     ├── planet1.png
     ├── planet2.png
     └── planet3.png
@@ -218,6 +219,7 @@ x64/Release/
     ├── shoot.wav
     ├── enemy_shoot.wav
     ├── hit_wrong.wav
+    ├── bomb.wav
     ├── planet1.png
     ├── planet2.png
     └── planet3.png
