@@ -925,13 +925,26 @@ void Game::RenderUI() {
         SDL_RenderRect(renderer, &box);
 
         if (nameEntryActive) {
-            // Name entry
+            // Name entry field
             SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
             SDL_FRect nameBox{box.x + 50.0f, box.y + 100.0f, 300.0f, 40.0f};
             SDL_RenderRect(renderer, &nameBox);
-            // Cursor blink
+
+            // Draw the entered name (scale 2 for legibility)
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            DrawText(renderer, static_cast<int>(box.x + 60.0f),
+                     static_cast<int>(box.y + 108.0f), nameBuffer, 2);
+
+            // Blinking cursor after the name
             if (static_cast<int>(SDL_GetTicks() / 500) % 2 == 0) {
-                // Would draw nameBuffer + '_'
+                int nameWidth = 0;
+                for (int i = 0; nameBuffer[i] != '\0'; ++i) {
+                    nameWidth += 5 * 2 + 1 * 2; // char width + gap at scale 2
+                }
+                SDL_FRect cursor{static_cast<float>(box.x + 60.0f + nameWidth),
+                                 static_cast<float>(box.y + 108.0f),
+                                 2.0f * 2.0f, 7.0f * 2.0f};
+                SDL_RenderFillRect(renderer, &cursor);
             }
         } else {
             // Title
@@ -1020,8 +1033,8 @@ void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
     SDL_RenderFillRect(renderer, &overlay);
 
     // Leaderboard box, centred in the window
-    const float boxW = 400.0f;
-    const float boxH = 300.0f;
+    const float boxW = 450.0f;
+    const float boxH = 500.0f;
     const SDL_FRect box{(static_cast<float>(windowWidth) - boxW) * 0.5f,
                         (static_cast<float>(windowHeight) - boxH) * 0.5f,
                         boxW, boxH};
@@ -1032,7 +1045,7 @@ void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
 
     // Title bar
     SDL_SetRenderDrawColor(renderer, 80, 200, 120, 255);
-    SDL_FRect titleBar{box.x + 20.0f, box.y + 30.0f, 200.0f, 24.0f};
+    SDL_FRect titleBar{box.x + 20.0f, box.y + 25.0f, 200.0f, 24.0f};
     SDL_RenderFillRect(renderer, &titleBar);
 
     // Entries (text labels — legible without SDL3_ttf)
@@ -1042,16 +1055,24 @@ void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
 
     // Column headers (bright, larger)
     SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
-    DrawText(renderer, static_cast<int>(colXName), static_cast<int>(box.y + 44.0f), "NAME", 3);
-    DrawText(renderer, static_cast<int>(colXScore), static_cast<int>(box.y + 44.0f), "SCORE", 3);
+    DrawText(renderer, static_cast<int>(colXName), static_cast<int>(box.y + 62.0f), "NAME", 3);
+    DrawText(renderer, static_cast<int>(colXScore), static_cast<int>(box.y + 62.0f), "SCORE", 3);
 
-    for (int i = 0; i < highScoreCount && i < kMaxHighScores; ++i) {
+    // Calculate how many entries fit in the box (leave room for hint bar at bottom)
+    const float entryStartY = box.y + 102.0f;
+    const float entrySpacing = 72.0f;
+    const int maxEntriesVisible = static_cast<int>((boxH - 102.0f - 60.0f) / entrySpacing);
+    int entriesToShow = highScoreCount;
+    if (entriesToShow > kMaxHighScores) entriesToShow = kMaxHighScores;
+    if (entriesToShow > maxEntriesVisible) entriesToShow = maxEntriesVisible;
+
+    for (int i = 0; i < entriesToShow; ++i) {
         // Bounds check: only read valid entries (fixes C6385/C6386).
         if (i < 0 || i >= kMaxHighScores || i >= highScoreCount) {
             break;
         }
 
-        const float entryY = box.y + 80.0f + i * 44.0f;
+        const float entryY = entryStartY + i * entrySpacing;
 
         // Rank indicator
         SDL_FRect rankBar{box.x + 40.0f, entryY, 24.0f, 24.0f};
@@ -1068,7 +1089,7 @@ void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
 
         // Rank number (scale 2)
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        DrawNumber(renderer, static_cast<int>(box.x + 50.0f), static_cast<int>(entryY), i + 1, 2);
+        DrawNumber(renderer, static_cast<int>(box.x + 52.0f), static_cast<int>(entryY + 2.0f), i + 1, 2);
 
         // Name text (scale 3 for legibility)
         const char* entryName = highScores[i].name[0] != '\0' ? highScores[i].name : "--";
@@ -1076,14 +1097,13 @@ void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
         DrawText(renderer, static_cast<int>(colXName), static_cast<int>(entryY), entryName, 3);
 
         // Score text (scale 3 for legibility)
-        char scoreBuf[16];
-        snprintf(scoreBuf, sizeof(scoreBuf), "%d", highScores[i].score);
-        DrawText(renderer, static_cast<int>(colXScore), static_cast<int>(entryY), scoreBuf, 3);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        DrawNumber(renderer, static_cast<int>(colXScore), static_cast<int>(entryY), highScores[i].score, 3);
     }
 
-    // Hint
+    // Hint bar at bottom, below all entries
     SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
-    SDL_FRect hintBar{box.x + 40.0f, box.y + boxH - 40.0f, 200.0f, 16.0f};
+    SDL_FRect hintBar{box.x + 40.0f, box.y + boxH - 48.0f, 200.0f, 16.0f};
     SDL_RenderFillRect(renderer, &hintBar);
 }
 

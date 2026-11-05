@@ -118,9 +118,16 @@ For each AI-generated output:
 - Score scales with the wave number.
 - Clearing the field waits two seconds, then spawns the next wave and increments the wave counter.
 - Losing all lives enters the Game Over state with a menu: **Retry** (restart immediately) or **Enter Name** (save score to leaderboard).
+- **Name entry:** typed characters render inside a bordered text field with a blinking cursor (toggle every 500 ms). Press Enter to save the score and open the Leaderboard.
 - Entering a name saves the score to `scores.dat` and transitions to the Leaderboard state.
 - Pressing Space on the leaderboard restarts via `ResetGame()`.
 - Player bullets and enemy bullets use separate pools and colours (yellow vs red).
+
+### Leaderboard Layout
+- Leaderboard entries are laid out with proper vertical spacing (48px between rows) to prevent overlap
+- Column headers (NAME / SCORE) sit above entries at scale 3
+- Entry count is capped to fit within the box height (hint bar at bottom never overlaps entries)
+- Rank indicator bars are 24×24px, rank numbers at scale 2, names/scores at scale 3
 
 ### Scoring & Persistence
 - `HighScoreEntry` struct holds a 16-char name and integer score.

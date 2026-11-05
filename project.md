@@ -131,8 +131,8 @@ The gameplay loop will include shooting alien enemies in order to get your score
 - Base score per kill × wave multiplier
 - 3 lives; respawn grants 2s invincibility (blinking sprite)
 - Game Over → menu: **Retry** (restart immediately) or **Enter Name** (save score to leaderboard)
+- **Name entry:** typed characters render in a bordered field with a blinking cursor; Enter saves and opens Leaderboard
 - Game Over → enter name → Leaderboard
-
 ### File Loading
 - `scores.dat` — binary high score table (top 10), loaded at startup and saved when a new score qualifies.
 - `assets/config.json` — keybinds, volume, difficulty preset (planned).
