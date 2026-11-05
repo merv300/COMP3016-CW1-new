@@ -18,6 +18,7 @@ public:
 
     void Update(float deltaTime) override;
     void Render(SDL_Renderer* renderer) override;
+    void Render(SDL_Renderer* renderer, float xScale, float yScale);
     SDL_FRect GetBounds() const override;
 
 private:

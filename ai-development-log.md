@@ -90,6 +90,7 @@ For each AI-generated output:
 - Scale is derived from the rotated world's axis-aligned bounding box (`|cos|`/`|sin|`), so the whole playfield fits at both 0° and 90°.
 - `F11` toggles borderless fullscreen; the destination rect and UI overlay use the live window pixel size, so layout stays centred after the resize.
 - Reference grid and a corner marker make the current rotation readable.
+- The menu's starfield render scales X and Y independently (`windowWidth / kWorldWidth`, `windowHeight / kWorldHeight`) so the background fills the window correctly at any resolution; only X was scaled previously, which left the lower part of the screen unpopulated in fullscreen.
 
 ### Rotation Mechanic
 - `Q` toggles between the two supported orientations: portrait (0°) and landscape (90° clockwise).
@@ -115,21 +116,25 @@ For each AI-generated output:
 - The explosion is cosmetic only: a growing ring and shrinking core that fade over 0.4 s.
 
 ### Game Flow
-- Score scales with the wave number.
-- Clearing the field waits two seconds, then spawns the next wave and increments the wave counter.
-- Losing all lives enters the Game Over state with a menu: **Retry** (restart immediately) or **Enter Name** (save score to leaderboard).
-- **Name entry:** typed characters render inside a bordered text field with a blinking cursor (toggle every 500 ms). Press Enter to save the score and open the Leaderboard.
-- Entering a name saves the score to `scores.dat` and transitions to the Leaderboard state.
-- Pressing Space on the leaderboard restarts via `ResetGame()`.
-- Player bullets and enemy bullets use separate pools and colours (yellow vs red).
+- Game starts at the **Main Menu** (Start Game / Leaderboard / Exit) rendered over the starfield background
+- Start game resets game state and enters Playing
+- Score scales with the wave number
+- Clearing the field waits two seconds, then spawns the next wave and increments the wave counter
+- Losing all lives enters the Game Over state with a menu: **Retry** (restart immediately) or **Enter Name** (save score to leaderboard)
+- **Name entry:** typed characters render inside a bordered text field with a blinking cursor (toggle every 500 ms). Press Enter to save the score and open the Leaderboard
+- Entering a name saves the score to `scores.dat` and transitions to the Leaderboard state
+- Pressing Space on the leaderboard returns to the Main Menu
+- Player bullets and enemy bullets use separate pools and colours (yellow vs red)
 
-### Leaderboard Layout
-- Leaderboard entries are laid out with proper vertical spacing (48px between rows) to prevent overlap
-- Column headers (NAME / SCORE) sit above entries at scale 3
-- Entry count is capped to fit within the box height (hint bar at bottom never overlaps entries)
-- Rank indicator bars are 24×24px, rank numbers at scale 2, names/scores at scale 3
-
-### Scoring & Persistence
+### Menu System
+- Main menu title rendered as bitmap letters "ROTATORZ" via `DrawText` at scale 5 (previously drew a placeholder digit `0`)
+- `Menu` state added to `GameState` enum (Menu / Playing / GameOver / Leaderboard)
+- `menuSelected` tracks highlighted option (0=Start Game, 1=Leaderboard, 2=Exit)
+- Up/Down/W/S navigate; Space/Return selects
+- Start Game calls `ResetGame()` then sets state to `Playing`
+- Leaderboard displays top scores from `scores.dat`
+- Exit sets `running = false` to close the game
+- `ResetGame()` no longer sets `state = GameState::Playing` — each caller manages state transitions
 - `HighScoreEntry` struct holds a 16-char name and integer score.
 - Top-10 table stored as `HighScoreEntry highScores[kMaxHighScores]` in `Game`.
 - `LoadHighScores()` reads `scores.dat` at startup (count + binary entries); starts empty if the file doesn't exist.

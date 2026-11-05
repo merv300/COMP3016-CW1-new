@@ -15,6 +15,7 @@
 namespace rtz {
 
 enum class GameState {
+    Menu,
     Playing,
     GameOver,
     Leaderboard
@@ -72,6 +73,8 @@ private:
     void AddHighScore(const char* name, int score);
     void UpdateLeaderboard(float deltaTime);
     void RenderLeaderboard(int windowWidth, int windowHeight);
+    void UpdateMenu(float deltaTime);
+    void RenderMenu(int windowWidth, int windowHeight);
 
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
@@ -87,7 +90,10 @@ private:
     ObjectPool<Explosion> explosionPool{16};
     ObjectPool<Star> starPool{kStarCount};
 
-    GameState state = GameState::Playing;
+    GameState state = GameState::Menu;
+
+    // Currently highlighted menu option (0=Start, 1=Leaderboard, 2=Exit).
+    int menuSelected = 0;
 
     // Rotation: smooth tween between portrait (0°) and landscape (90° CW).
     float currentAngle = 0.0f;

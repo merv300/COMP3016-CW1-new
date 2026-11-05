@@ -31,7 +31,11 @@ void Star::Update(float deltaTime) {
 }
 
 void Star::Render(SDL_Renderer* renderer) {
-    SDL_FRect rect{position.x, position.y, size, size};
+    Render(renderer, 1.0f, 1.0f);
+}
+
+void Star::Render(SDL_Renderer* renderer, float xScale, float yScale) {
+    SDL_FRect rect{position.x * xScale, position.y * yScale, size, size};
     SDL_SetRenderDrawColor(renderer, 220, 220, 255, alpha);
     SDL_RenderFillRect(renderer, &rect);
 }

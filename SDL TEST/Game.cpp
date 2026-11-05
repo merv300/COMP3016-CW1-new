@@ -260,7 +260,9 @@ void Game::Update(float deltaTime) {
         SDL_SetWindowFullscreen(window, isFullscreen);
     }
 
-    if (state == GameState::Playing) {
+    if (state == GameState::Menu) {
+        UpdateMenu(deltaTime);
+    } else if (state == GameState::Playing) {
         UpdatePlaying(deltaTime);
     } else if (state == GameState::Leaderboard) {
         UpdateLeaderboard(deltaTime);
@@ -496,6 +498,7 @@ void Game::UpdateGameOver(float deltaTime) {
         input.WasKeyPressed(SDL_SCANCODE_KP_ENTER)) {
         if (gameOverMenu == GameOverMenu::Retry) {
             ResetGame();
+            state = GameState::Playing;
         } else {
             nameEntryActive = true;
             nameLength = 0;
@@ -614,6 +617,37 @@ void Game::UpdateLeaderboard(float deltaTime) {
         input.WasKeyPressed(SDL_SCANCODE_KP_ENTER) ||
         input.WasKeyPressed(SDL_SCANCODE_ESCAPE)) {
         ResetGame();
+        state = GameState::Menu;
+    }
+}
+
+void Game::UpdateMenu(float deltaTime) {
+    // Animate starfield background
+    starPool.ForEachActive([deltaTime](Star& star) { star.Update(deltaTime); });
+
+    // Menu navigation: Up/Down or W/S to switch options.
+    if (input.WasKeyPressed(SDL_SCANCODE_UP) ||
+        input.WasKeyPressed(SDL_SCANCODE_DOWN) ||
+        input.WasKeyPressed(SDL_SCANCODE_W) ||
+        input.WasKeyPressed(SDL_SCANCODE_S)) {
+        menuSelected = (menuSelected + 1) % 3;
+    }
+
+    // Select the highlighted option.
+    if (input.WasKeyPressed(SDL_SCANCODE_SPACE) ||
+        input.WasKeyPressed(SDL_SCANCODE_RETURN) ||
+        input.WasKeyPressed(SDL_SCANCODE_KP_ENTER)) {
+        if (menuSelected == 0) {
+            // Start game
+            ResetGame();
+            state = GameState::Playing;
+        } else if (menuSelected == 1) {
+            // Leaderboard
+            state = GameState::Leaderboard;
+        } else if (menuSelected == 2) {
+            // Exit
+            running = false;
+        }
     }
 }
 
@@ -742,7 +776,6 @@ void Game::ResetGame() {
     respawnInvincibilityTimer = 0.0f;
     currentAngle = 0.0f;
     targetAngle = 0.0f;
-    state = GameState::Playing;
     nameEntryActive = false;
     nameLength = 0;
     nameBuffer[0] = '\0';
@@ -814,7 +847,11 @@ void Game::Render() {
                              currentAngle, nullptr, SDL_FLIP_NONE);
 
     // 3. UI overlay (rendered after rotation so it stays screen-aligned).
-    RenderUI();
+    if (state == GameState::Menu) {
+        RenderMenu(windowWidth, windowHeight);
+    } else {
+        RenderUI();
+    }
 
     SDL_RenderPresent(renderer);
 }
@@ -1104,6 +1141,75 @@ void Game::RenderLeaderboard(int windowWidth, int windowHeight) {
     // Hint bar at bottom, below all entries
     SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
     SDL_FRect hintBar{box.x + 40.0f, box.y + boxH - 48.0f, 200.0f, 16.0f};
+    SDL_RenderFillRect(renderer, &hintBar);
+}
+
+void Game::RenderMenu(int windowWidth, int windowHeight) {
+    // Draw world background (stars) — cleared by DrawWorld already, but we
+    // need to draw stars directly since we skip DrawWorld for the menu.
+    SDL_SetRenderDrawColor(renderer, 10, 12, 24, 255);
+    SDL_RenderClear(renderer);
+
+    // Draw stars directly for animated background. Scale both axes so the
+    // starfield fills the window correctly at any resolution / in fullscreen.
+    const float starScaleX = static_cast<float>(windowWidth) / kWorldWidth;
+    const float starScaleY = static_cast<float>(windowHeight) / kWorldHeight;
+    starPool.ForEachActive([this, starScaleX, starScaleY](Star& star) {
+        star.Render(renderer, starScaleX, starScaleY);
+    });
+
+    // Menu box, centred in the window
+    const float boxW = 400.0f;
+    const float boxH = 300.0f;
+    const SDL_FRect box{(static_cast<float>(windowWidth) - boxW) * 0.5f,
+                        (static_cast<float>(windowHeight) - boxH) * 0.5f,
+                        boxW, boxH};
+    SDL_SetRenderDrawColor(renderer, 40, 40, 60, 255);
+    SDL_RenderFillRect(renderer, &box);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_RenderRect(renderer, &box);
+
+    // Title "ROTATORZ" — large bitmap letters at scale 5, centred in the box
+    const int titleScale = 5;
+    const char* title = "ROTATORZ";
+    const int titleWidth =
+        static_cast<int>(std::strlen(title)) * 6 * titleScale - titleScale;
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    DrawText(renderer, static_cast<int>(box.x + (boxW - titleWidth) * 0.5f),
+             static_cast<int>(box.y + 50.0f), title, titleScale);
+
+    // Menu options
+    // Menu options
+    float optionY = box.y + 140.0f;
+    const float optionGap = 44.0f;
+
+    const char* options[3] = {"START GAME", "LEADERBOARD", "EXIT"};
+
+    for (int i = 0; i < 3; ++i) {
+        const bool selected = (menuSelected == i);
+        const Uint8 r = selected ? 255 : 120;
+        const Uint8 g = selected ? 220 : 120;
+        const Uint8 b = selected ? 80 : 120;
+        const Uint8 a = selected ? 255 : 150;
+
+        // Selection arrow on the left
+        if (selected) {
+            SDL_SetRenderDrawColor(renderer, r, g, b, a);
+            SDL_FRect arrow{box.x + 60.0f, static_cast<float>(optionY + 8.0f), 14.0f, 14.0f};
+            SDL_RenderFillRect(renderer, &arrow);
+        }
+
+        // Option text
+        SDL_SetRenderDrawColor(renderer, r, g, b, a);
+        DrawText(renderer, static_cast<int>(box.x + 90.0f),
+                 static_cast<int>(optionY), options[i], 2);
+
+        optionY += optionGap;
+    }
+
+    // Hint at bottom
+    SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
+    SDL_FRect hintBar{box.x + 40.0f, box.y + boxH - 40.0f, 320.0f, 16.0f};
     SDL_RenderFillRect(renderer, &hintBar);
 }
 
