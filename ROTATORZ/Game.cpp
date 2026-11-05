@@ -72,6 +72,48 @@ constexpr uint8_t kLetterFont[27][7] = {
     { 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000 }, // space (26)
 };
 
+// 5x7 colon glyph, used by the timer and any "F11:" style hints.
+constexpr uint8_t kColonFont[7] = {
+    0b00000, 0b00100, 0b00000, 0b00000, 0b00100, 0b00000, 0b00000
+};
+
+// Returns the 7-row bitmap for a supported character, or nullptr if unsupported.
+const uint8_t* FindGlyph(char c) {
+    if (c >= 'A' && c <= 'Z') {
+        return kLetterFont[c - 'A'];
+    }
+    if (c >= '0' && c <= '9') {
+        return kDigitFont[c - '0'];
+    }
+    if (c == ' ') {
+        return kLetterFont[26];
+    }
+    if (c == ':') {
+        return kColonFont;
+    }
+    return nullptr;
+}
+
+// Pixel advance per character (glyph width + one pixel gap).
+int GlyphAdvance(int scale) {
+    return 5 * scale + scale;
+}
+
+// Pixel width of a string as rendered by DrawText (no trailing gap).
+int MeasureText(const char* text, int scale) {
+    int width = 0;
+    for (const char* p = text; *p != '\0'; ++p) {
+        if (FindGlyph(*p) == nullptr) {
+            continue;
+        }
+        width += GlyphAdvance(scale);
+    }
+    if (width > 0) {
+        width -= scale; // drop the trailing inter-character gap
+    }
+    return width;
+}
+
 // Draws an integer as bitmap digits (no SDL3_ttf dependency).
 // Returns the pixel width of the rendered number.
 int DrawNumber(SDL_Renderer* renderer, int x, int y, int value, int scale = 2) {
@@ -114,27 +156,20 @@ int DrawNumber(SDL_Renderer* renderer, int x, int y, int value, int scale = 2) {
     return digitCount * 5 * scale + (digitCount - 1) * scale;
 }
 
-// Draws a text string as bitmap letters (no SDL3_ttf dependency).
-// Only uppercase A-Z and space are supported. Returns the pixel width.
+// Draws a text string as bitmap glyphs (no SDL3_ttf dependency).
+// Supports uppercase A-Z, digits 0-9, space and ':'. Returns the pixel width.
 int DrawText(SDL_Renderer* renderer, int x, int y, const char* text, int scale = 1) {
     int totalWidth = 0;
     int drawX = x;
 
     for (const char* p = text; *p != '\0'; ++p) {
-        char c = *p;
-        if (c == ' ') {
-            drawX += 5 * scale + scale;
-            totalWidth += 5 * scale + scale;
-            continue;
-        }
-
-        int letterIndex = c - 'A';
-        if (letterIndex < 0 || letterIndex > 25) {
+        const uint8_t* glyph = FindGlyph(*p);
+        if (glyph == nullptr) {
             continue;
         }
 
         for (int row = 0; row < 7; ++row) {
-            uint8_t rowBits = kLetterFont[letterIndex][row];
+            uint8_t rowBits = glyph[row];
             for (int col = 0; col < 5; ++col) {
                 if ((rowBits >> (4 - col)) & 1u) {
                     SDL_FRect pixel{
@@ -147,8 +182,8 @@ int DrawText(SDL_Renderer* renderer, int x, int y, const char* text, int scale =
                 }
             }
         }
-        drawX += 5 * scale + scale;
-        totalWidth += 5 * scale + scale;
+        drawX += GlyphAdvance(scale);
+        totalWidth += GlyphAdvance(scale);
     }
 
     return totalWidth;
@@ -420,6 +455,9 @@ void Game::UpdatePlaying(float deltaTime) {
     const float half = kPlayerSize * 0.5f;
     pos.x = std::clamp(pos.x, kPlayerMargin + half, kWorldWidth - kPlayerMargin - half);
     player.SetPosition(pos);
+
+    // Game timer — counts seconds alive in the current run.
+    gameTimer += deltaTime;
 
     // Player fire (always up in world space; rotation is visual only).
     fireCooldown -= deltaTime;
@@ -938,6 +976,7 @@ void Game::ResetGame() {
     waveClearTimer = kWaveClearDelay;
     fireCooldown = 0.0f;
     wrongHitSfxCooldown = 0.0f;
+    gameTimer = 0.0f;
     bombCooldown = kBombCooldownTime;
     respawnInvincibilityTimer = 0.0f;
     currentAngle = 0.0f;
@@ -1081,6 +1120,20 @@ void Game::RenderUI() {
     // Score — bitmap digits in top-right (white)
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     const int scoreTextWidth = DrawNumber(renderer, windowWidth - 20, 10, score, 4);
+
+    // Timer — below the score, M:SS format, right-aligned with the score.
+    const int totalSeconds = static_cast<int>(gameTimer);
+    const int minutes = totalSeconds / 60;
+    const int seconds = totalSeconds % 60;
+
+    char timerText[16];
+    std::snprintf(timerText, sizeof(timerText), "%d:%02d", minutes, seconds);
+
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    const int timerScale = 2;
+    const int timerY = 62;
+    DrawText(renderer, windowWidth - 20 - MeasureText(timerText, timerScale),
+             timerY, timerText, timerScale);
 
     // Lives
     for (int i = 0; i < lives; ++i) {

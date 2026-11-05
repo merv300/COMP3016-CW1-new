@@ -233,6 +233,12 @@ For each AI-generated output:
   line at scale 1 below the menu options inside the title box, so players discover the
   fullscreen toggle without reading the README.
 
+### Timer
+- Added `gameTimer` (seconds alive in current run), rendered top-right in M:SS format below the score in `RenderUI()`.
+- Starts at 0 in `ResetGame()` and ticks up every frame in `UpdatePlaying()`.
+- Shown only during gameplay, not on menus.
+- Extended the bitmap font (`DrawText`) to support digits and `:`, and added `MeasureText` for right-alignment. This also fixes the `F11: TOGGLE FULLSCREEN` hint, which previously dropped the digits and colon.
+
 ### Background Layer Changes
 - **Slower gun fire rate:** `kFireCooldown` increased from `0.22f` to `0.28f` so the
   player shoots a little less often.

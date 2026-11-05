@@ -135,6 +135,7 @@ private:
     float waveClearTimer = 0.0f;
     float fireCooldown = 0.0f;
     float wrongHitSfxCooldown = 0.0f;
+    float gameTimer = 0.0f; // seconds alive in the current run
     float bombCooldown = kBombCooldownTime; // start ready
     float respawnInvincibilityTimer = 0.0f;
     static constexpr float kRespawnInvincibilityTime = kPlayerInvuln;
