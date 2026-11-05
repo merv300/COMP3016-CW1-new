@@ -436,5 +436,8 @@ FodyWeavers.xsd
 x64/
 ROTATORZ/x64/
 
+# Submission packaging output
+dist/
+
 # SDL3 runtime DLL (downloaded, not source)
 ROTATORZ/SDL3.dll

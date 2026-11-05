@@ -120,16 +120,6 @@ void Enemy::Render(SDL_Renderer* renderer) {
         SDL_SetRenderDrawColor(renderer, r, g, b, 255);
         SDL_RenderFillRect(renderer, &rect);
     }
-
-    // Orientation marker: a small line hinting at the axis it is aligned to.
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    const float centerX = position.x;
-    const float centerY = position.y;
-    if (orientation == EnemyOrientation::LANDSCAPE) {
-        SDL_RenderLine(renderer, centerX - 10.0f, centerY, centerX + 10.0f, centerY);
-    } else {
-        SDL_RenderLine(renderer, centerX, centerY - 10.0f, centerX, centerY + 10.0f);
-    }
 }
 
 SDL_FRect Enemy::GetBounds() const {

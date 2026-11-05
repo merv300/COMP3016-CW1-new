@@ -1,7 +1,6 @@
 #include "Player.h"
 
 #include <algorithm>
-#include <cmath>
 
 #ifdef RTZ_USE_SDL3_IMAGE
 #include <SDL3_image/SDL_image.h>
@@ -55,34 +54,13 @@ void Player::Update(float deltaTime) {
 
 void Player::Render(SDL_Renderer* renderer) {
     // Draw the ship sprite if loaded, falling back to a coloured rectangle.
+    SDL_FRect body = GetBounds();
     if (s_texture != nullptr) {
-        SDL_FRect body = GetBounds();
         SDL_SetTextureColorMod(s_texture, 255, 255, 255);
         SDL_RenderTexture(renderer, s_texture, nullptr, &body);
     } else {
-        SDL_FRect body = GetBounds();
         SDL_SetRenderDrawColor(renderer, 120, 220, 255, 255);
         SDL_RenderFillRect(renderer, &body);
-    }
-
-    // Nose indicator points to screen-up (-Y in world space). It is rotated
-    // visually by the view angle so it always points "up" on the rotated screen.
-    const float rad = viewAngle * 3.14159265f / 180.0f;
-    const float noseX = std::sin(rad) * (size * 0.7f);
-    const float noseY = -std::cos(rad) * (size * 0.7f);
-    const float centerX = position.x;
-    const float centerY = position.y;
-
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_RenderLine(renderer, centerX, centerY,
-                   centerX + noseX,
-                   centerY + noseY);
-
-    if (firing) {
-        SDL_SetRenderDrawColor(renderer, 255, 214, 102, 255);
-        SDL_RenderLine(renderer, centerX + noseX, centerY + noseY,
-                       centerX + noseX * 1.5f,
-                       centerY + noseY * 1.5f);
     }
 }
 

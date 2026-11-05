@@ -408,8 +408,6 @@ void Game::UpdatePlaying(float deltaTime) {
     // Player moves horizontally in world space only (A/D). Rotation is
     // purely visual — the world doesn't actually rotate, only the view.
     player.SetMoveIntent(input.GetMoveAxis().x);
-    player.SetViewAngle(currentAngle);
-    player.SetFiring(input.IsFiring());
     player.Update(deltaTime);
 
     // Lock the player near the bottom edge and keep the whole ship on-screen.
@@ -948,8 +946,6 @@ void Game::ResetGame() {
 
     player.SetPosition({kWorldWidth * 0.5f, kPlayerY});
     player.SetMoveIntent(0.0f);
-    player.SetFiring(false);
-    player.SetViewAngle(0.0f);
 
     // Initialise the starfield background.
     starPool.ReleaseAll();

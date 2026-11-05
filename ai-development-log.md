@@ -213,5 +213,24 @@ For each AI-generated output:
 - Tracks and audio are freed in `UnloadAssets()` under the usual `RTZ_USE_SDL3_MIXER`
   guards; a missing file only logs a message and the game keeps running.
 
+### Sprite Cleanup
+- Removed the procedural white "nose indicator" line and the yellow muzzle line that
+  were drawn on top of the player sprite.
+- Removed the white orientation marker line drawn across every enemy sprite.
+- Deleted the now-unused `firing` / `viewAngle` members and their setters from `Player`,
+  along with the corresponding `Game` calls. Orientation is still readable from the
+  sprite art itself; the background reference grid is unchanged.
+
+### Build and Submission Packaging
+- README now documents two paths: running the prebuilt package and building from source
+  (prerequisites, SDL package locations, per-config steps, runtime DLL list, common
+  gotchas such as the working directory used for `assets/`).
+- Verified a clean **Release|x64** build in addition to Debug; output is `ROTATORZ.exe`.
+- Runtime dependencies for shipping: `SDL3.dll`, `SDL3_image.dll`, `SDL3_mixer.dll`,
+  `libogg-0.dll`, plus optional image decoders (`libpng16-16.dll`, `libwebp-*`).
+- Created `dist/ROTATORZ.zip` containing the release executable, all runtime DLLs,
+  the `assets/` folder and the README. `dist/` is git-ignored so the archive is not
+  committed.
+
 
 ---
