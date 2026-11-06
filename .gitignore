@@ -441,3 +441,6 @@ dist/
 
 # SDL3 runtime DLL (downloaded, not source)
 ROTATORZ/SDL3.dll
+
+# Generated save game
+ROTATORZ/scores.dat

@@ -69,10 +69,12 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="UserMacros">
+    <SDLDependenciesDir>$(SolutionDir)Dependencies</SDLDependenciesDir>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>C:\schoolwork\Computer Science\COMP3016\SDL\SDL3\lib\x64;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_image\SDL3_image-3.4.8\lib\x64;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_mixer\SDL3_mixer-3.2.4\lib\x64;$(LibraryPath)</LibraryPath>
-    <ExternalIncludePath>C:\schoolwork\Computer Science\COMP3016\SDL\SDL3\include\SDL3;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_image\SDL3_image-3.4.8\include;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_mixer\SDL3_mixer-3.2.4\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <LibraryPath>$(SDLDependenciesDir)\SDL3\lib\x64;$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64;$(SDLDependenciesDir)\SDL3_mixer\SDL3_mixer-3.2.4\lib\x64;$(LibraryPath)</LibraryPath>
+    <ExternalIncludePath>$(SDLDependenciesDir)\SDL3\include\SDL3;$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\include;$(SDLDependenciesDir)\SDL3_mixer\SDL3_mixer-3.2.4\include;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -115,13 +117,16 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;RTZ_USE_SDL3_IMAGE;RTZ_USE_SDL3_MIXER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\schoolwork\Computer Science\COMP3016\SDL\SDL3\include;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_image\SDL3_image-3.4.8\include;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_mixer\SDL3_mixer-3.2.4\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SDLDependenciesDir)\SDL3\include;$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\include;$(SDLDependenciesDir)\SDL3_mixer\SDL3_mixer-3.2.4\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\schoolwork\Computer Science\COMP3016\SDL\SDL3\lib\x64;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_image\SDL3_image-3.4.8\lib\x64;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_mixer\SDL3_mixer-3.2.4\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SDLDependenciesDir)\SDL3\lib\x64;$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64;$(SDLDependenciesDir)\SDL3_mixer\SDL3_mixer-3.2.4\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>SDL3.lib;SDL3_image.lib;SDL3_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <PostBuildEvent>
+        <Command>xcopy /Y "$(SDLDependenciesDir)\SDL3\lib\x64\SDL3.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64\SDL3_image.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64\optional\libpng16-16.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64\optional\libwebp-7.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64\optional\libwebpdemux-2.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64\optional\libwebpmux-3.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_mixer\SDL3_mixer-3.2.4\lib\x64\SDL3_mixer.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_mixer\SDL3_mixer-3.2.4\lib\x64\optional\libogg-0.dll" "$(OutDir)"</Command>
+      </PostBuildEvent>
     </Link>
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
@@ -136,13 +141,16 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;RTZ_USE_SDL3_IMAGE;RTZ_USE_SDL3_MIXER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\schoolwork\Computer Science\COMP3016\SDL\SDL3\include;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_image\SDL3_image-3.4.8\include;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_mixer\SDL3_mixer-3.2.4\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SDLDependenciesDir)\SDL3\include;$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\include;$(SDLDependenciesDir)\SDL3_mixer\SDL3_mixer-3.2.4\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\schoolwork\Computer Science\COMP3016\SDL\SDL3\lib\x64;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_image\SDL3_image-3.4.8\lib\x64;C:\schoolwork\Computer Science\COMP3016\SDL\SDL3_mixer\SDL3_mixer-3.2.4\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SDLDependenciesDir)\SDL3\lib\x64;$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64;$(SDLDependenciesDir)\SDL3_mixer\SDL3_mixer-3.2.4\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>SDL3.lib;SDL3_image.lib;SDL3_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <PostBuildEvent>
+        <Command>xcopy /Y "$(SDLDependenciesDir)\SDL3\lib\x64\SDL3.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64\SDL3_image.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64\optional\libpng16-16.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64\optional\libwebp-7.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64\optional\libwebpdemux-2.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_image\SDL3_image-3.4.8\lib\x64\optional\libwebpmux-3.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_mixer\SDL3_mixer-3.2.4\lib\x64\SDL3_mixer.dll" "$(OutDir)" &amp; xcopy /Y "$(SDLDependenciesDir)\SDL3_mixer\SDL3_mixer-3.2.4\lib\x64\optional\libogg-0.dll" "$(OutDir)"</Command>
+      </PostBuildEvent>
     </Link>
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
