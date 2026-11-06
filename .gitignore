@@ -433,7 +433,7 @@ FodyWeavers.xsd
 # ============================================
 
 # Build output folders (both locations)
-x64/
+/x64/
 ROTATORZ/x64/
 
 # Submission packaging output
@@ -444,3 +444,5 @@ ROTATORZ/SDL3.dll
 
 # Generated save game
 ROTATORZ/scores.dat
+
+
